@@ -30,9 +30,9 @@
 // ==UserScript==
 // @name           Normal video player
 // @namespace      https://github.com/paponius/
-// @description    Add standard video toolbar, speed buttons and shortcuts "<" and ">" (Shift-, and Shift-.)
+// @description    Video controls, seek, full screen, speed. Separated video and text. No overlays.
 // @author         papo
-// @version        0.9.0
+// @version        0.9.2
 // @license        GPLv2
 // ###icon           https://www.google.com/s2/favicons?sz=64&domain=yyy.yy
 

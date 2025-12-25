@@ -37,6 +37,7 @@
 // ###require        http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js
 // ###require        https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
 
+// @require        file:///H:\Projects\JS\UserScripts-papo\lib\GM_menu_command.js
 // @require        file://H:\Projects\JS\UserScripts-papo\src\normal_video_player.js
 
 //// Production version of this US
@@ -64,6 +65,7 @@
 // @grant          GM_setClipboard
 // @grant          GM_addStyle
 // @grant          GM_registerMenuCommand
+// @grant          GM_unregisterMenuCommand
 // @grant          GM.openInTab
 // @grant          unsafeWindow
 // @grant          window.close
