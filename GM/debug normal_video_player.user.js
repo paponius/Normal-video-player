@@ -21,29 +21,25 @@
 
 
 // ==UserScript==
-// @name           DEBUG - Normal video player
+// @name           DEBUG:2 - Normal video player
 // @author         papo
 
 // ###run-at         document-start
 //// document-start ['loading'] -> document-body [<body> exist] -> document-end ['DOMContentLoaded'/'interactive'] -> document-idle (TM default)
 
-// ###noframes
+// @noframes
 
 
 //// REQUIRE directives. Make it identical to production version of the US. Replace with file:// those which will be edited in IDE.
-
-//// FRAMEWORKS
-// ###require        https://code.jquery.com/jquery-2.2.0.min.js
-// ###require        http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js
-// ###require        https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
-
+// @require        file:///H:\Documents\coding\JS\Snippets\MutationObserver\debug_tool_find_mutated_elements.js
+// 
 // @require        file:///H:\Projects\JS\UserScripts-papo\lib\GM_menu_command.js
 // @require        file://H:\Projects\JS\UserScripts-papo\src\normal_video_player.js
 
 //// Production version of this US
 //// Must be the last @require. Metadata block in it is ignored. No need to add if it's without JS code.
 //
-// @require        file://C:\XXX_PATH\GM\Normal video player.user.js
+// #@require        file://C:\XXX_PATH\GM\Normal video player.user.js
 
 
 //// RESOURCE

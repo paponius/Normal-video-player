@@ -18,15 +18,6 @@
 // v2.0
 
 
-// TEMPLATE
-// This text block is to be removed from scripts. It's only meant to describe this template.
-//
-
-// XXX_PATH: path to the script
-// YYY: Optional, but usually sensible to edit
-// ###: as needed
-
-
 // ==UserScript==
 // @name           Normal video player
 // @namespace      https://github.com/paponius/
@@ -35,6 +26,12 @@
 // @version        0.9.2
 // @license        GPLv2
 // ###icon           https://www.google.com/s2/favicons?sz=64&domain=yyy.yy
+
+// @grant          GM_getValue
+// @grant          GM_setValue
+// @grant          GM_unregisterMenuCommand
+// @grant          GM_registerMenuCommand
+
 
 // @match          https://www.instagram.com/reel/*
 // @match          https://www.facebook.com/reel/*
