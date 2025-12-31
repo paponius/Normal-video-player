@@ -81,13 +81,14 @@ var sites = {
 		loop: [{
 				// loopOverTagName is not used now. <video> tag is hard-coded.
 				// plan: loopOver<TagName|...> is used to create an Array to loop over, providing iterator's value with `loopItem`
-				loopOverTagName: 'video'
+				loopOverTagName: 'video',
 				// getReferenceElementBy<tagName|...>_0 can create additional reference elements. (to loopItem)
 				// e.g. There are multiple <video> el., where each has ancestry starting at an el. which will be looped over.
 				// <video> itself is used a lot, so it will be stored in a `reference_<NUMBER>`.
-				// In cssPath, within a selector, also `REFERENCE_<NUMBER>|LOOPITEM` can be used, different or the same as in useReference.
-				// (it makes sense to use the same, where sibling of the reference is needed, as `:scope + div` is not valid selector)
-				// getReferenceElementByRelativePos_1: 'nextElementSibling'
+				// In cssPath, within a selector, also `REFERENCE_<NUMBER>|LOOPITEM|DOCUMENT` can be used, different or the same as in useReference.
+				// For use in two situations. 1. useReference was needed to set reference for something else in this job,
+				//  2. where sibling of the reference is needed, as `:scope + div` or `:scope ~ div` are not valid selectors
+				getReferenceElementByRelativePos_1: 'nextElementSibling'
 				// getReferenceElementBy<tagName|...>_0:
 			}],
 		hidePageOverlays: [{
@@ -97,19 +98,25 @@ var sites = {
 			}],
 		hideVideoOverlays: [{
 				// B only. must not act on A, ifCssPath value below is present only on B
-				ifCssPath: '[data-pagelet="Reels"]',
+				ifCssPath: 'DOCUMENT [data-pagelet="Reels"]', // is only on B
 				useReference: 'loopItem',
 				relativePos: 'nextElementSibling',
 				setCSSProperties: 'display: none;'
 			}],
 		// useReference is used for ifPropExists, but also for cssPath to get and unmute only one video
-		// TODO: this changed, not anonymous needs new slector (probably)
 		unmute: [{
-				// A, ? not A, B
-				useReference: 'loopItem', // ref for click
+				// A
+				useReference: 'loopItem', // ref for ifPropExists
 				ifPropExists: 'muted',
-				waitForElOnParentCssPath: 'REFERENCE_1 ~ div [data-visualcompletion',
-				cssPath: 'REFERENCE_1 ~ div [aria-label="Unmute"], ~ div button, [aria-label="Unmute"]',
+				waitForElOnParentCssPath: 'LOOPITEM ~ div [data-visualcompletion]',
+				cssPath: 'LOOPITEM ~ div [aria-label="Unmute"], LOOPITEM ~ div button',
+				click: true
+			},
+			{
+				// B
+				useReference: 'loopItem', // ref for ifPropExists
+				ifPropExists: 'muted',
+				cssPath: 'DOCUMENT [aria-label="Unmute"]',
 				click: true
 			}],
 		moveOverlays: [
@@ -209,8 +216,10 @@ var config = {
 function modPage(domainKeys, type, loopItem) {
 	var refData = {};
 	domainKeys?.forEach(domainKey => {
+
+		// read getReferenceElementByRelativePos_1 from loop property
 		sites[domainKey].loop?.forEach( itm => {
-			if (DEBUG == 2) { debugger; }
+			// if (DEBUG == 2) { debugger; }
 			for (const par in itm) {
 				const arPar = par.split('_');
 				if (!arPar[1]) { continue; }
@@ -226,6 +235,7 @@ function modPage(domainKeys, type, loopItem) {
 				}
 			}
 		});
+
 		sites[domainKey][type]?.forEach(job => {
 			var arrEl, condition = true, elRef = document;
 
@@ -235,51 +245,75 @@ function modPage(domainKeys, type, loopItem) {
 			/// complement - reference
 			if (job.useReference) {
 				if (job.useReference === 'loopItem') { elRef = loopItem; }
-				if (job.useReference.contains('reference')) { /* todo: get number, use refData  */ }
+				if (job.useReference.contains('reference')) { /* not needed now.todo: get number, use refData  */ }
 			}
 
 			/// complement - observer
 			if (job.waitForElOnParentCssPath) {
-				const arObserved = Array.from(elRef.querySelectorAll(':scope :is(' + job.waitForElOnParentCssPath + ')'));
-				if (!arObserved.length) {
-					arObserved.forEach( elObserveOn => {
-						var observer = new MutationObserver(mutations => {
-							if (DEBUG == 2) { debugger; }
-							for (const mut of mutations) {
-								if (LOG) { console.log('[Normal video player] observer processing mutation out of ' + mutations.length, mut); }
-								if (mut.addedNodes.length === 0) { continue; } // looking for added only now, not removed/changed
-								for (const node of mut.addedNodes) {
-									if (!(node instanceof Element)) { continue; } // Processing a #Text node will error
-									if (node instanceof HTMLStyleElement) { continue; }
-									if (LOG) { console.log('[Normal video player] observer runs nowOrLater()'); }
-									nowOrLater(observer);
-									return // observer event
-								}
+				// todo need to replace placeholder like in cssPath, make it a function and call it from here
+				const arrToObserve = Array.from(elRef.querySelectorAll(':scope :is(' + job.waitForElOnParentCssPath + ')'));
+				if (LOG && !arrToObserve.length) { console.error('[Normal video player] Element to observe not found in job:', job); }
+				arrToObserve.forEach( elObserveOn => {
+					var observer = new MutationObserver(mutations => {
+						if (DEBUG == 2) { debugger; }
+						for (const mut of mutations) {
+							if (LOG) { console.log('[Normal video player] observer processing mutation out of ' + mutations.length, mut); }
+							if (mut.addedNodes.length === 0) { continue; } // looking for added only now, not removed/changed
+							for (const node of mut.addedNodes) {
+								if (!(node instanceof Element)) { continue; } // Processing a #Text node will error
+								if (node instanceof HTMLStyleElement) { continue; }
+								if (LOG) { console.log('[Normal video player] observer runs nowOrLater()'); }
+								nowOrLater(observer);
+								return; // observer event
 							}
-						})
-						.observe(elObserveOn, {
-							// subtree: true, // now observing just additions on one target
-							childList: true
-						});
+						}
+					})
+					.observe(elObserveOn, {
+						// subtree: true, // now observing just additions on one target
+						childList: true
 					});
-				} else { nowOrLater(); }
+				});
 			} else { nowOrLater(); }
+
+			//  elRef is reset to `document` when there was a replacement
+			function replaceRef(query, elRef) {
+				var elRefOnce = elRef;
+				switch (true) {
+				  case query.contains('REFERENCE_'): // REFERENCE_<NUMBER>
+					elRefOnce = document;
+					// TODO
+					break;
+				  case query.contains('LOOPITEM'):
+					let randClass = 'normal-player-' + Math.floor(Math.random() * 6);
+					elRefOnce = document;
+					loopItem.classList.add(randClass);
+					query = query.replaceAll('LOOPITEM', '.' + randClass);
+					// TODO
+					break;
+				  case query.contains('DOCUMENT'):
+					elRefOnce = document;
+					query = query.replaceAll('DOCUMENT', ''); // not trying to remove a possible space at the end
+					// this case was never tested
+					break;
+				}
+				return {query, elRefOnce};
+			}
 
 			function nowOrLater(obs) {
 				/// conditional
-	// todo: need to add :scope
+	//  need to replace placeholder like in cssPath, make it a function and call it from here
 				if (job.ifCssPath) {
-					condition &&= elRef.querySelector(job.ifCssPath);  // jshint ignore:line
+					const {query, elRefOnce} = replaceRef(job.ifCssPath, elRef);
+					condition &&= elRefOnce.querySelector(':scope :is(' + query + ')');  // jshint ignore:line
 					// maybe should just return from here (to next job)
 				}
 				if (job.ifPropExists) { condition &&= elRef[job.ifPropExists]; }  // jshint ignore:line
 
 				/// designators
-	// todo: need to add :scope
 				if (job.cssPath) {
-					arrEl = Array.from(elRef.querySelectorAll(':scope :is(' + job.cssPath + ')'));
+					const {query, elRefOnce} = replaceRef(job.cssPath, elRef);
+					arrEl = Array.from(elRefOnce.querySelectorAll(':scope :is(' + query + ')'));
 				}
-	// todo: need to add :scope?
 				if (job.tagName) {
 					arrEl = Array.from(elRef.getElementsByTagName(job.tagName));
 				}
@@ -317,7 +351,7 @@ function modPage(domainKeys, type, loopItem) {
 }
 
 function action() {
-	if (LOG) { console.log('[Normal video player] START action() which run:', debugRunCnt); }
+	if (LOG) { console.log('[Normal video player] START action() run cnt:', debugRunCnt); }
 	// when debugging, run just once, 2: after 1sec
 	if (DEBUG && ++debugRunCnt !== 2) { return; }
 	// if (DEBUG && ++debugRunCnt === 1) { return; } // might be too soon, not good for debug
