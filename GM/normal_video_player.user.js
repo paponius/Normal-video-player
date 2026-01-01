@@ -37,6 +37,7 @@
 // @match          https://www.facebook.com/reel/*
 // YYY match          *://*.yyy.com/yyy/yyy*/*
 
-// @require        https://github.com/paponius/UserScripts-papo/raw/master/src/normal_video_player.js?v0.9
+// @require        https://github.com/paponius/Normal-video-player/raw/master/lib/GM_menu_command.js
+// @require        https://github.com/paponius/Normal-video-player/raw/master/src/normal_video_player.js?v0.9
 
 // ==/UserScript==
