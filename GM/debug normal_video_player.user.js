@@ -30,20 +30,11 @@
 // @noframes
 
 
-//// REQUIRE directives. Make it identical to production version of the US. Replace with file:// those which will be edited in IDE.
+//// REQUIRE directives
 // @require        file:///H:\Documents\coding\JS\Snippets\MutationObserver\debug_tool_find_mutated_elements.js
 // 
-// @require        file:///H:\Projects\JS\UserScripts-papo\lib\GM_menu_command.js
-// @require        file://H:\Projects\JS\UserScripts-papo\src\normal_video_player.js
-
-//// Production version of this US
-//// Must be the last @require. Metadata block in it is ignored. No need to add if it's without JS code.
-//
-// #@require        file://C:\XXX_PATH\GM\Normal video player.user.js
-
-
-//// RESOURCE
-// ###resource       extension_pages/options.html file://C:\path\to\file
+// @require        file:///H:\Projects\JS\Normal-video-player\lib\GM_menu_command.js
+// @require        file://H:\Projects\JS\Normal-video-player\src\normal_video_player.js
 
 
 //// Allowing everything in this debug US:
