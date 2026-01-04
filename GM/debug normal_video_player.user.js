@@ -21,10 +21,14 @@
 
 
 // ==UserScript==
-// @name           DEBUG:2 - Normal video player
+// @name           DEBUG - Normal video player
+//                 3: wait for element
+//                 4: handler of observer
 // @author         papo
 
 // ###run-at         document-start
+// #@run-at         document-start
+// #@run-at         document-end
 //// document-start ['loading'] -> document-body [<body> exist] -> document-end ['DOMContentLoaded'/'interactive'] -> document-idle (TM default)
 
 // @noframes

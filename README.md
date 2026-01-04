@@ -7,6 +7,7 @@ This script fixes that.
 - no overlays (on Desktop)
 - no video shades
 - normal video controls
+- no mute, no autoplay. Click to play from start.
 - possibility to reverse/forward - seek
 - possibility to switch to full-screen
 - possibility to change speed
