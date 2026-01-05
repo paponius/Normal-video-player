@@ -31,12 +31,11 @@
  * Only first video is tweaked. Two are preloaded, some modding is applied to both two, some just to first. todo: all next videos
  *
  ** Facebook logged-in
- * landscape videos
- * do not work properly.
- * text is partially moved now, which makes it unreadable. todo: a button which will show text with dark BG on click
- * seek line is not moved to cover the HTML5 seeker
- * shade is not removed
- * clicking on video is taken by some event. that disallows double click for full screen, but FS icon works.
+ * landscape videos: todo: a button which will show text with dark BG on click
+ * 
+ * 
+ * clicking on video is taken by `video + div [role="presentation"]`. that disallows double click for full screen, but FS icon works.
+ * removing the el. helps, then the click goes to <video>, but it does not react that well for some reason
  * 
  ** Facebook logged-in (or maybe both)
  * Some elements are not yet ready when the mod runs. Now the modding runs multiple times. there is no return of success state now, which could indicate whether to schedule more runs later.
@@ -191,14 +190,14 @@ var sites = {
 			}],
 
 		// just DEBUG the REFERENCE
-		hideVideoOverlays: [{
-				debug: 'test1',
-				ifCssPath: 'REFERENCE_22 [data-pagelet="Reels"] REFERENCE_2, REFERENCE_0+REFERENCE_02', // is only on B
-			},
-			{
-				debug: 'test2',
-				cssPath: 'REFERENCE_22 [data-pagelet="Reels"] REFERENCE_2, REFERENCE_0+REFERENCE_02', // is only on B
-			}],
+		// hideVideoOverlays: [{
+		// 		debug: 'test1',
+		// 		ifCssPath: 'REFERENCE_22 [data-pagelet="Reels"] REFERENCE_2, REFERENCE_0+REFERENCE_02', // is only on B
+		// 	},
+		// 	{
+		// 		debug: 'test2',
+		// 		cssPath: 'REFERENCE_22 [data-pagelet="Reels"] REFERENCE_2, REFERENCE_0+REFERENCE_02', // is only on B
+		// 	}],
 
 		hideVideoOverlays_: [{
 				// B only. must not act on A, ifCssPath value below is present only on B
@@ -219,11 +218,11 @@ var sites = {
 			},
 
 			// just debug
-			{
-				debug: 'test3',
-				ifCssPath: 'LOOPITEM [data-pagelet="Reels"]', // is only on B
-				cssPath: 'LOOPITEM ~ div [aria-label="Unmute"][role="button"], LOOPITEM ~ div button'
-			},
+			// {
+			// 	debug: 'test3',
+			// 	ifCssPath: 'LOOPITEM [data-pagelet="Reels"]', // is only on B
+			// 	cssPath: 'LOOPITEM ~ div [aria-label="Unmute"][role="button"], LOOPITEM ~ div button'
+			// },
 
 			{
 				// B, but A too. todo does it matter? prop muted is check, should not click if still muted
@@ -273,7 +272,10 @@ var sites = {
 
 			// --- A. (and below) --- todo: limit to A
 			{
-				cssPath: 'LOOPITEM + div > div',
+				// debug: true,
+				// can't use ifCssPath, it would "find" such el. on next video. the selector must contain LOOPITEM to be limited to current
+				// ifCssPath: '[data-video-id]:not([style*="width: 1024px"])',
+				cssPath: '[data-video-id]:not([style*="width: 1024px"]) LOOPITEM + div > div',
 				setCSSProperties: 'left: -450px;'
 			},
 			{
@@ -282,12 +284,13 @@ var sites = {
 			},
 			// move JS slider over the HTML5 slider. JS slider does have thumbnail, which is a nice feature to preserve
 			{
+				// debug: true,
+				waitForElOnParentCssPath: '[data-video-id] + div',
 				cssPath: '[role="slider"]',
 				setCSSProperties: 'top: -20px;'
 			},
 			// click on "See more". It's not always present
 			{
-				debug: true,
 				waitForElOnParentCssPath: 'LOOPITEM ~ div > [data-visualcompletion]',
 				setReferenceElementByCssPath_1: 'LOOPITEM + div div:has(> [role="button"]):not(:has(> [role="button"] > *))',
  				useReference: 'reference_1',
