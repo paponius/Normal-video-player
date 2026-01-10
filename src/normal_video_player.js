@@ -73,6 +73,7 @@
 //  All caps words are to be replaced as needed. camel style names are fixed
 var SITES_DOC = {
 	SITE_MASK: {       /* <part of a domain> (e.g. instagram, instagram.com, www.instagram.com; partial or identical,	                         two sitemasks targeting the same page are possible) */
+		css: ``,       // CSS to add to page using function addCSS()
 		loop: [{       /* special optional property. ACTION can be performed on each iteration specified here (e.g. on all <video> elements) */
 			id: 0,     /* optional id. useful if there are multiple loops and not all JOBs are to be performed in all loops */
 			loopOverTagName: 'video',  // there can be only one loop* property. Others would be ignored.
@@ -86,11 +87,12 @@ var SITES_DOC = {
 				debug: true, // to have debugger stop on this item
 
 				setReferenceElementBySOMETHING_3: '',
-				                           /* Reference can be used by useReference, but also within *cssPath*, *ifCssPath* by keywords.
-				                           When a reference is used within a query, the reference from which the search starts is set to `document`.
+				                           /* Reference set by this directive can be used by useReference, but also within *cssPath*, *ifCssPath* by keywords (REFERENCE_X). */
+				setReferenceElementByCssPath_1: 'CSS PATH',
+				                           /* When a reference is used within a query, the reference from which the search starts is set to `document`.
 				                           - can use multiple different references in a query
 				                           - can search starting from a siblings of a reference, which is not possible with useReference
-				                            */
+				                           setReferenceElementByCssPath_X does not use ref from useReference. Query always starts on `document` */
 
 				//// complement - reference
 				useReference: 'loopItem',  /* 'loopItem'|'reference_<NUMBER>'|none; when useReference is not present, `document` is used.
@@ -124,15 +126,53 @@ var SITES_DOC = {
 				setCSSProperties: 'display: none;',
 				getCSSProperty: 'width',
 				click: ''           // all elements found by designators are clicked. This might be not desirable
-			},
-			{
-				setReferenceElementByCssPath_1: 'CSS PATH'
 			}
 		]
 	}
 };
 
 var sites = {
+	'tiktok.com': {
+		css: `
+			body > tiktok-cookie-banner {
+				display: none;
+			}
+		`,
+		loop: [{
+				id: 0,
+				loopOverTagName: 'video',
+				// top parent of an entry
+				setReferenceElementByCssPath_1: 'article[id]'
+			}],
+		hidePageOverlays: [
+			// in anonymous: solve puzzle
+			{
+				cssPath: 'body > [data-floating-ui-portal]:has(> .TUXModal-overlay)',
+				setCSSProperties: 'display: none;'	
+			},
+			// cookies, the orig applies the cookies dialog multiple times, this does not help, hiding them in CSS above instead
+			// {
+			// 	waitForElOnParentCssPath: 'body',
+			// 	cssPath: 'body > tiktok-cookie-banner',
+			// 	setCSSProperties: 'display: none;'	
+			// }
+			//// todo: it would be nice to have an Option here, some might want to see stuff tictac wants to say
+			{
+				// debug: true,
+				cssPath: '#pns-communication-service',
+				setCSSProperties: 'display: none;'	
+			}
+		],
+// TODO need check if it's muted. now it toggles on off on off		
+		unmute: [{
+				debug: true,
+				useReference: 'loopItem', // ref for ifPropExists
+				ifPropExists: 'muted',
+				// waitForElOnParentCssPath: '',
+				cssPath: 'REFERENCE_1 [class*="-DivVolumeControlContainer"] button',
+				click: true
+		}]
+	},
 	instagram: {
 		loop: [{
 				id: 0,
@@ -217,7 +257,7 @@ var sites = {
 				click: true
 			},
 
-			// just debug
+			//// just debug
 			// {
 			// 	debug: 'test3',
 			// 	ifCssPath: 'LOOPITEM [data-pagelet="Reels"]', // is only on B
@@ -294,7 +334,7 @@ var sites = {
 				waitForElOnParentCssPath: 'LOOPITEM ~ div > [data-visualcompletion]',
 				setReferenceElementByCssPath_1: 'LOOPITEM + div div:has(> [role="button"]):not(:has(> [role="button"] > *))',
  				useReference: 'reference_1',
- 				ifTextContains: '…',
+ 				ifTextIncludes: '…',
 				// cssPath: 'LOOPITEM + div [role="button"]:not(:has(> *))',
 				relativeToRef: 'directChildren',
 				click: true
@@ -349,13 +389,14 @@ if (DEBUG == 's') { debugger; } // stop at beginning
 var debugRunCnt = 0;
 if (LOG) { console.log('[Normal video player] START'); }
 
+
 var config = {
 	hideMasthead: new Option('hideMasthead','Hide masthead').value
 };
 
 
 function modPage(jobs, loopItem, refData, loopID) {
-	if (!jobs?.length) { console.error('XXXXXXX'); return false; }
+	if (!jobs?.length) { if (LOG) { console.log('[Normal video player] this action is not defined'); } return false; }
 		// sites[domainKey][type]?.forEach(job => {
 	jobs.forEach(job => { // note! if this will be changed to `for...of`, have to change `return` to `continue` inside
 			var arrEl, elRef = document;
@@ -369,45 +410,13 @@ function modPage(jobs, loopItem, refData, loopID) {
 
 			nowOrLater();
 			function nowOrLater(obsrvs) { // todo: rename to modJob, add modJob directly as arg to: jobs.forEach(modJob)
+
 			/// complement - reference
+			//  process setReferenceElementBy_X entries within job
 			// Object.keys(job).filter(itm => itm.startsWith('setReferenceElementBy')).forEach(itm => {
 			// Object.keys(job).forEach(itm => {
-			processRefs(job, loopItem, refData);
-			function processRefs(job, currentElement, refData) {
-				for (const param in job) {
-					if (!param.startsWith('setReferenceElementBy')) { continue; }
-					console.log(param);
-					if (DEBUG && DEBUG != 4) 
-						debugger;
-					const arPar = param.split('_');
-					if (!arPar[1]) { console.error('[Normal video player] setReferenceElementBy* missing number'); continue; }
-					switch (arPar[0]) {
-					  case 'setReferenceElementByRelativePos':
-						switch (job[param]) {
-						  case 'nextElementSibling':
-							refData[arPar[1]] = currentElement.nextElementSibling;
-							break;
-						  default:
-							console.error('[Normal video player] wrong value of designator: ' + job[param], job);
-							break;
-						}
-						break;
-					  case 'setReferenceElementByCssPath':
-						const {query, elRefOnce} = replaceRef(job[param], currentElement);
-						// write in to `refData[arPar[1]]` even when `null` to overwrite old value
-						refData[arPar[1]] = elRefOnce.querySelector(':scope :is(' + query + ')');
-						if (!refData[arPar[1]]) {
-							if (!obsrvs?.length) {
-								if (!waitForMutation(job)) { // has observers which can be set up
-									if (LOG) { console.log('[Normal video player] %c' + param + ' not present', 'color: red', job, 'loopItem:',loopItem, 'refData', refData, 'loopID:', loopID); }
-								}
-							}
-							return;
-						}
-						break;
-					}
-				}
-			}
+			processRefs(job, loopItem, refData, obsrvs);
+
 			if (job.useReference) {
 				if (job.useReference === 'loopItem') { elRef = loopItem; }
 				if (job.useReference.startsWith('reference_')) {
@@ -422,13 +431,13 @@ function modPage(jobs, loopItem, refData, loopID) {
 				// var waitableMissing = false; // something that can be waited upon by observer
 				// TEST replace placeholder like in cssPath, make it a function and call it from here
 				if (job.ifCssPath) {
-					const {query, elRefOnce} = replaceRef(job.ifCssPath, elRef);
+					const {query, elRefOnce} = replaceRef(job.ifCssPath, elRef, loopItem, refData);
 					let elPresent = elRefOnce.querySelector(':scope :is(' + query + ')');
 					condition &&= elPresent;  // jshint ignore:line
-					// if (!elPresent && (obsrvs?.length || !waitForMutation(job))) { return; } // if is there something to wait upon
+					// if (!elPresent && (obsrvs?.length || !waitForMutation(job, elRef, loopItem, refData))) { return; } // if is there something to wait upon
 					if (!elPresent) {
 						if (!obsrvs?.length) {
-							if (!waitForMutation(job)) { // has observers which can be set up
+							if (!waitForMutation(job, elRef, loopItem, refData)) { // has observers which can be set up
 								if (LOG) { console.log('[Normal video player] %cifCssPath not present', 'color: orange', job, 'loopItem:',loopItem, 'refData', refData, 'loopID:', loopID); }
 							}
 						}
@@ -436,11 +445,12 @@ function modPage(jobs, loopItem, refData, loopID) {
 					}
 				}
 				if (job.ifPropExists) { condition &&= elRef[job.ifPropExists]; }  // jshint ignore:line
+				if (job.ifTextIncludes) { condition &&= elRef.textContent.includes(job.ifTextIncludes); } // jshint ignore:line
 
 
 				//// designators
 				if (job.cssPath) {
-					const {query, elRefOnce} = replaceRef(job.cssPath, elRef);
+					const {query, elRefOnce} = replaceRef(job.cssPath, elRef, loopItem, refData);
 					arrEl = Array.from(elRefOnce.querySelectorAll(':scope :is(' + query + ')'));
 				}
 				if (job.tagName) {
@@ -467,12 +477,10 @@ function modPage(jobs, loopItem, refData, loopID) {
 				// if ((!arrEl?.length || waitableMissing) && job.waitForElOnParentCssPath && !waitedArrived) {
 				// if (!arrEl?.length && job.waitForElOnParentCssPath && !waitedArrived) {
 				// why, no, there is nothing useful waitForMutation can return
-				// waitForMutation() returns false if it can't find observer points
-				// if (!arrEl?.length && (obsrvs?.length || !waitForMutation(job))) { return; } // if is there something to wait upon
-				// if (!arrEl?.length && (obsrvs?.length || !waitForMutation(job))) { return; } // if is there something to wait upon
+				// waitForMutation() returns false if it can't find observer points and there is nothing to wait for
 				if (!arrEl?.length) {
 					if (!obsrvs?.length) {
-						if (!waitForMutation(job)) { // has observers which can be set up
+						if (!waitForMutation(job, elRef, loopItem, refData)) { // has observers which can be set up
 
 							/// LOG target el not found
 							// if LOG: This is not error in production condition, as there could be a job which does not always have work.
@@ -504,91 +512,135 @@ function modPage(jobs, loopItem, refData, loopID) {
 				// Another point, Maybe there will be an option to not remove the observer, it might be the observed el keeps disappearing and job on arrEl should be repeatedly done.
 				// if (arrEl?.length) { obs?.disconnect(); if (LOG) { console.log('[Normal video player] observer disconnected (removed)'); }}
 			}
-
-			/// complement - observer
-			// return: all waitFor* must find at least one element or waitForMutation() will return false
-			function waitForMutation(job) {
-				var observers = [];
-				for (const par in job) {
-					switch (par) {
-					  case 'waitForElOnParentCssPath':
-
-						const {query, elRefOnce} = replaceRef(job.waitForElOnParentCssPath, elRef);
-						const arrToObserve = Array.from(elRefOnce.querySelectorAll(':scope :is(' + query + ')'));
-						if (!arrToObserve.length) {
-							console.error('[Normal video player] Element to observe not found in job:', job);
-							return false;
-						}
-						arrToObserve.forEach( elObserveOn => {
-							var thisObserver = new MutationObserver(mutations => {
-								if (DEBUG == 4) { debugger; }
-								for (const mut of mutations) {
-									if (LOG) { console.log('[Normal video player] observer processing mutation out of ' + mutations.length, mut); }
-									if (mut.addedNodes.length === 0) { continue; } // looking for added only now, not removed/changed
-									for (const node of mut.addedNodes) {
-										if (!(node instanceof Element)) { continue; } // Processing a #Text node will error
-										if (node instanceof HTMLStyleElement) { continue; }
-										if (LOG) { console.log('[Normal video player] observer runs nowOrLater()'); }
-										// nowOrLater(thisObserver);
-										nowOrLater(observers); // need all observers for this job, so they all can be disconnected
-										return; // from observer event
-									}
-								}
-							});
-							// can not chain to the `new MutationObserver` as `thisObserver` is needed later and `.observe` does not return it
-							thisObserver.observe(elObserveOn, {
-								// subtree: true, // now observing just additions on one target
-								childList: true
-							});
-							observers.push(thisObserver);
-							if (LOG) { console.debug('[Normal video player] observer set on', elObserveOn, job, loopID); }
-						});
-						break;
-					} // switch
-				} // for (const par in job) {
-				if (observers.length) { return observers; // observers from return is not used now, can just return true
-				} else { return false; }
-			}
-
-			//  elRef is reset to `document` when there was a replacement
-			function replaceRef(query, elRef) {
-				var elRefOnce = elRef;
-				switch (true) {
-				  case query.contains('REFERENCE_'): // REFERENCE_<NUMBER>
-					elRefOnce = document;
-					// could be multiple times and with multiple different refs
-					const rand = Math.floor(Math.random() * 1000000);
-					// we know all possible references from refData. but maybe regexp is easier as it will do only used keys and all in one loop
-					// refData.keys().forEach(key => query = query.replaceAll('REFERENCE_' + key, (match, p1, offset, string, groups) => {
-					query = query.replaceAll(/REFERENCE_(\d+)/g, (match, p1, offset, string, groups) => {
-						// find a class starting `reference-${p1}-normal-player-` and use that instead of adding a new one
-						let randClass = Array.from(refData[p1].classList).find(cls => cls.startsWith(`reference-${p1}-normal-player-`));
-						if (!randClass) {
-							randClass = `reference-${p1}-normal-player-${rand}`;
-							refData[p1].classList.add(randClass);
-						}
-						return '.' + randClass;
-					});
-					break;
-				  case query.contains('LOOPITEM'):
-					elRefOnce = document;
-					let randClass = Array.from(loopItem.classList).find(cls => cls.startsWith('loopitem-normal-player-'));
-					if (!randClass) {
-						randClass = 'loopitem-normal-player-' + Math.floor(Math.random() * 1000000);
-						loopItem.classList.add(randClass);
-					}
-					query = query.replaceAll('LOOPITEM', '.' + randClass);
-					break;
-				  case query.contains('DOCUMENT'):
-					elRefOnce = document;
-					query = query.replaceAll('DOCUMENT', ''); // not trying to remove a possible space at the end
-					// this case was never tested
-					break;
-				}
-				return {query, elRefOnce};
-			}
 			console.groupEnd();
 	}); // jobs.forEach(job => {
+}
+
+// return: all waitFor* must find at least one element or waitForMutation() will return false
+function waitForMutation(job, elRef, loopItem, refData) {
+	var observers = [];
+	for (const par in job) {
+		switch (par) {
+		  case 'waitForElOnParentCssPath':
+
+			const {query, elRefOnce} = replaceRef(job.waitForElOnParentCssPath, elRef, loopItem, refData);
+			const arrToObserve = Array.from(elRefOnce.querySelectorAll(':scope :is(' + query + ')'));
+			if (!arrToObserve.length) {
+				console.error('[Normal video player] Element to observe not found in job:', job);
+				return false;
+			}
+			arrToObserve.forEach( elObserveOn => {
+				var thisObserver = new MutationObserver(mutations => {
+					if (DEBUG == 4) { debugger; }
+					for (const mut of mutations) {
+						if (LOG) { console.log('[Normal video player] observer processing mutation out of ' + mutations.length, mut); }
+						if (mut.addedNodes.length === 0) { continue; } // looking for added only now, not removed/changed
+						for (const node of mut.addedNodes) {
+							if (!(node instanceof Element)) { continue; } // Processing a #Text node will error
+							if (node instanceof HTMLStyleElement) { continue; }
+							if (LOG) { console.log('[Normal video player] observer runs nowOrLater()'); }
+							// nowOrLater(thisObserver);
+							nowOrLater(observers); // need all observers for this job, so they all can be disconnected
+							return; // from observer event
+						}
+					}
+				});
+				// can not chain to the `new MutationObserver` as `thisObserver` is needed later and `.observe` does not return it
+				thisObserver.observe(elObserveOn, {
+					// subtree: true, // now observing just additions on one target
+					childList: true
+				});
+				observers.push(thisObserver);
+				if (LOG) { console.debug('[Normal video player] observer set on', elObserveOn, job/*, loopID*/); }
+			});
+			break;
+		} // switch
+	} // for (const par in job) {
+	if (observers.length) { return observers; // observers from return is not used now, can just return true
+	} else { return false; }
+}
+
+// elRef: when this is called, elRef was either `document`, or an el. obtained by `useReference`.
+//        if this function makes a change to query, it will also replace elRef value with `document` and returns in elRefOnce
+function replaceRef(query, elRef, loopItem, refData) {
+	var elRefOnce = elRef;
+	switch (true) {
+	  case query.includes('REFERENCE_'): // REFERENCE_<NUMBER>
+		elRefOnce = document;
+		// could be multiple times and with multiple different refs
+		const rand = Math.floor(Math.random() * 1000000);
+		// we know all possible references from refData. but maybe regexp is easier as it will do only used keys and all in one loop
+		// refData.keys().forEach(key => query = query.replaceAll('REFERENCE_' + key, (match, p1, offset, string, groups) => {
+		query = query.replaceAll(/REFERENCE_(\d+)/g, (match, p1, offset, string, groups) => {
+			// find a class starting `reference-${p1}-normal-player-` and use that instead of adding a new one
+			let randClass = Array.from(refData[p1].classList).find(cls => cls.startsWith(`reference-${p1}-normal-player-`));
+			if (!randClass) {
+				randClass = `reference-${p1}-normal-player-${rand}`;
+				refData[p1].classList.add(randClass);
+			}
+			return '.' + randClass;
+		});
+		break;
+	  case query.includes('LOOPITEM'):
+		elRefOnce = document;
+		let randClass = Array.from(loopItem.classList).find(cls => cls.startsWith('loopitem-normal-player-'));
+		if (!randClass) {
+			randClass = 'loopitem-normal-player-' + Math.floor(Math.random() * 1000000);
+			loopItem.classList.add(randClass);
+		}
+		query = query.replaceAll('LOOPITEM', '.' + randClass);
+		break;
+	  case query.includes('DOCUMENT'):
+		elRefOnce = document;
+		query = query.replaceAll('DOCUMENT', ''); // not trying to remove a possible space at the end
+		// this case was never tested
+		break;
+	}
+	return {query, elRefOnce};
+}
+
+// process setReferenceElementBy*
+function processRefs(job, currentElement, refData, obsrvs) {
+	for (const param in job) {
+		if (!param.startsWith('setReferenceElementBy')) { continue; }
+		// console.log(param);
+		// if (DEBUG && DEBUG != 4) debugger;
+		const arPar = param.split('_');
+		if (!arPar[1]) { console.error('[Normal video player] setReferenceElementBy* missing number'); continue; }
+		switch (arPar[0]) {
+		  case 'setReferenceElementByRelativePos':
+			switch (job[param]) {
+			  case 'nextElementSibling':
+				refData[arPar[1]] = currentElement.nextElementSibling;
+				break;
+			  default:
+				console.error('[Normal video player] wrong value of designator: ' + job[param], job);
+				break;
+			}
+			break;
+		  case 'setReferenceElementByCssPath':
+		  	// setReferenceElementBy* never uses elRef, so elRefOnce is unused too, query starts from `document`
+			const {query, elRefOnce} = replaceRef(job[param], currentElement, currentElement, refData);
+			// write in to `refData[arPar[1]]` even when `null` to overwrite old value
+			refData[arPar[1]] = document.querySelector(':scope :is(' + query + ')');
+			if (!refData[arPar[1]]) {
+				if (!obsrvs || !obsrvs.length) {
+					if (!waitForMutation(job, document, currentElement, refData)) { // has observers which can be set up
+						if (LOG) { console.log('[Normal video player] %c' + param + ' not present', 'color: red', job, 'currentElement:',currentElement, 'refData', refData/*, 'loopID:', loopID*/); }
+					}
+				}
+				return;
+			}
+			break;
+		}
+	}
+}
+
+function addCSS(strCss) {
+	var style = document.createElement('style');
+	style.type = 'text/css';
+	style.innerHTML = strCss;
+	document.head.appendChild(style);
 }
 
 // id: none, number or Array of numbers
@@ -598,6 +650,7 @@ function loop(actions, handler, id) {
 
 function action() {
 	// when debugging, run just once on:
+	// if (DEBUG && ++debugRunCnt !== 4) { return; } // debug 2nd run. after 1sec
 	if (DEBUG && ++debugRunCnt !== 2) { return; } // debug 2nd run. after 1sec
 	// if (DEBUG && ++debugRunCnt !== 1) { return; } // debug 1st run (might be too soon to debug most of situations)
 
@@ -609,6 +662,7 @@ function action() {
 	var domainKeys = Object.keys(sites).filter(key => window.location.hostname.includes(key));
 	domainKeys?.forEach(domainKey => {
 		var actions = sites[domainKey];
+		addCSS(actions.css);
 		modPage(actions.hidePageOverlays);
 
 // todo will separate the loop code in its function, so that action() can just call it with some params and callback
@@ -637,24 +691,8 @@ function action() {
 				let refData = {};
 
 				//// read setReferenceElementBy*_# from loop property, set to refData object
-				//   this is done again for every iteration of loop, as setReferenceElementBy*_# can use iterated element as reference
-				// if (DEBUG == 2) { debugger; }
-				for (const par in propLoop) {
-					const arPar = par.split('_');
-					if (!arPar[1]) { continue; }
-					switch (arPar[0]) {
-					  case 'setReferenceElementByRelativePos':
-						switch (propLoop[par]) {
-						  case 'nextElementSibling':
-							refData[arPar[1]] = elVideo.nextElementSibling;
-							break;
-						  default:
-							console.error('[Normal video player] wrong value of designator: ' + propLoop[par], propLoop);
-							break;
-						}
-						break;
-					}
-				}
+				// this is done again for every iteration of loop, as setReferenceElementBy*_# can use iterated element as reference
+				processRefs(propLoop, elVideo, refData);
 
 				isVideoPresent = true;
 				// if (LOG) { console.log('[Normal video player] START forEach() on video: ', elVideo); }
