@@ -69,7 +69,26 @@
  *  
  */
 
-/// Description of the sites object:
+/// Description of the sites object
+/// References
+//    Some conditional and designator directives are run on a reference element. The reference element is the iterator of the loop.
+//    It may be changed using *useReference* directive to `document`, or to `reference_<NUMBER>`,
+//    which are additional **numbered** references created by `setReferenceElementBy*` directives within loop or ACTION.
+//    References created within ACTION should be only used by directives in that ACTION, but for now they will stay valid for the rest
+//    of ACTION's iterations and for following ACTIONs until overwritten. (this might change and they'll be cleared after each job)
+//    References created within ACTION can be waited upon when directive waitForElOnParentCssPath is used. (not those in loop)
+//
+//    References can be used, besides for useReference directive, also in selectors of directives. For now they are these:
+//    *cssPath*, *ifCssPath* and also in *setReferenceElementByCssPath_#* to set another reference using existing reference.
+//    References are added to selectors using keywords in all caps, as if they were a simple selector: REFERENCE_<NUMBER>|LOOPITEM|DOCUMENT
+//    LOOPITEM is useful when used in the middle of a complex selector, while on the left is a simple selector checking a state of a parent;
+//             when a sibling of a looped item is needed, because query can't start with "~" or "+" (i.e. :scope ~ something is not valid);
+//             to reset query back to looped item, when a REFERENCE_# keyword is also used, or useReference changed the reference.
+//    DOCUMENT is useful to query a selector on the whole `document`, as normally query would start on looped item.
+//    There can be multiple keywords present within one selector. If at least one keyword is used, a query would not start on the reference,
+//    but on the `document`. e.g. selector to target <p> which is a child of looped element: `p`,
+//    but to target a <p> which is a child of REFERENCE_1, within the looped element: `LOOPITEM REFERENCE_1 p`
+//
 //  All caps words are to be replaced as needed. camel style names are fixed
 var SITES_DOC = {
 	SITE_MASK: {       /* <part of a domain> (e.g. instagram, instagram.com, www.instagram.com; partial or identical,	                         two sitemasks targeting the same page are possible) */
@@ -77,37 +96,41 @@ var SITES_DOC = {
 		loop: [{       /* special optional property. ACTION can be performed on each iteration specified here (e.g. on all <video> elements) */
 			id: 0,     /* optional id. useful if there are multiple loops and not all JOBs are to be performed in all loops */
 			loopOverTagName: 'video',  // there can be only one loop* property. Others would be ignored.
-			setReferenceElementByRelativePos_1: 'nextElementSibling',
+
+			setReferenceElementBy___: '', // where "___" is one of those below
+				
+				// setReferenceElementBy<tagName|...>_0 // not developed for now
+
+			setReferenceElementByRelativeToLoopItem_1: 'nextElementSibling',
 			setReferenceElementByCssPath_2: 'CSS PATH' // only first target found by the query is used
+														// does not use ref from useReference. Query always starts on `document`
 		}],
 		ACTION: [      /* a set of actions to be performed. Either once per site, or per certain elements within a loop.
-		                  executed by `modPage(actions.unmute, elVideo, refData, loopID);` */
+						  executed by `modPage(actions.unmute, elVideo, refData, loopID);` */
 			{ /* JOB is an object within ACTION array */
 				'#_ARBITRARY_PROPERTY_NAME': 'a comment which is seen in debugger, will not fail in JSON and is not discarded by minifier. "#" is not required, but will make it obvious to reviewer this is a comment',
 				debug: true, // to have debugger stop on this item
 
-				setReferenceElementBySOMETHING_3: '',
-				                           /* Reference set by this directive can be used by useReference, but also within *cssPath*, *ifCssPath* by keywords (REFERENCE_X). */
-				setReferenceElementByCssPath_1: 'CSS PATH',
-				                           /* When a reference is used within a query, the reference from which the search starts is set to `document`.
-				                           - can use multiple different references in a query
-				                           - can search starting from a siblings of a reference, which is not possible with useReference
-				                           setReferenceElementByCssPath_X does not use ref from useReference. Query always starts on `document` */
+				setReferenceElementBy___: '', // see description in `loop` job
 
 				//// complement - reference
-				useReference: 'loopItem',  /* 'loopItem'|'reference_<NUMBER>'|none; when useReference is not present, `document` is used.
-				            /* loopItem: the element in iterator from loop will be used instead of the `document` with complement and designators */
+				useReference: 'reference_1',  // 'document'|'reference_<NUMBER>'; when useReference is not present, looped element is used.
+												// Can be used only once in one job and the position within job does not matter.
+												// setReferenceElementBy___ will use useReference with value "reference_*", only if that numbered reference was set in loop action block.
+												// If used in loop job, it only makes sense to set it to `document`.
 
 
 				//// complement - wait
 				waitForElOnParentCssPath: 'CSS PATH',  // will wait until element is present when searched by: setReferenceElementByCssPath_*, ifPropExists, cssPath
-				                                  // now it will observe and run resolve once. (unmute need once) Can add option to run forever.
+												  // now it will observe and run resolve once. (unmute need once) Can add option to run forever.
+												  // now it can not be used in loop action block
 
 
-				//// conditional
+				//// conditionals
 				//   Optional. If a conditional fails, actors don't act. Some can be waited upon. Search will start on the reference, if reference was not set, on `document`.
 				ifCssPath: 'CSS PATH', // can be waited upon
 				ifPropExists: 'NAME_OF_ELEMENT_PROPERTY',  // must be used with useReference; todo possibility to implement wait upon
+				ifAttr: 'ATTRIBUTE_WITH_EQUAL_SIGN', // todo not tested for attr without value yet, but should work (e.g. 'myattr="something"' or 'myattr')
 				ifLoopID: 0, // ignore this job if it's not called from loop with this ID
 
 
@@ -117,9 +140,9 @@ var SITES_DOC = {
 				cssPath: '',  // it will select only elements below the reference. With no reference used, the whole `document`.
 				tagName: '',
 				relativeToRef: 'nextElementSibling',         // must be used with useReference
-				          // 'nextElementSibling': next Element Sibling from the reference
-				          // 'this':               the element from reference
-				          // 'directChildren':     direct Children
+						  // 'nextElementSibling': next Element Sibling from the reference
+						  // 'this':               the element from reference
+						  // 'directChildren':     direct Children
 
 				//// actors
 				//   At least one actor must be used. Actors always act on elements retrieved by a designator. They never use reference.
@@ -137,11 +160,23 @@ var sites = {
 			body > tiktok-cookie-banner {
 				display: none;
 			}
+			#pns-communication-service {
+				display: none;
+			}
+			article[id] > [class*="--DivContentFlexLayout"] {
+				position: relative;
+				left: 321px;
+				left: 266px;
+				button {
+					opacity: 1;
+				}
+			}
 		`,
 		loop: [{
 				id: 0,
 				loopOverTagName: 'video',
 				// top parent of an entry
+				useReference: 'document',
 				setReferenceElementByCssPath_1: 'article[id]'
 			}],
 		hidePageOverlays: [
@@ -163,15 +198,53 @@ var sites = {
 				setCSSProperties: 'display: none;'	
 			}
 		],
-// TODO need check if it's muted. now it toggles on off on off		
-		unmute: [{
-				debug: true,
-				useReference: 'loopItem', // ref for ifPropExists
+		// on tiktok unmuting takes a long time. Because now this whole script runs multiple times, can not just check video.muted.
+		// TODO need check if it's muted. now it toggles on off on off		
+		unmute_X: [{
+				// debug: true,
 				ifPropExists: 'muted',
 				// waitForElOnParentCssPath: '',
 				cssPath: 'REFERENCE_1 [class*="-DivVolumeControlContainer"] button',
 				click: true
-		}]
+		}],
+		unmute: [{
+			// css-1dlb4zs-7937d88b--BasePlayerContainer-7937d88b--DivVideoPlayerContainer e1reenm13
+			// [class*="--BasePlayerContainer-"] [class*="--DivVideoPlayerContainer"]
+				// debug: true,
+				waitForElOnParentCssPath: 'REFERENCE_1 [class*="--DivVideoPlayerContainer"]',
+				setReferenceElementByCssPath_2: 'REFERENCE_1 [class*="-DivVolumeControlContainer"] button',
+				useReference: 'reference_2',
+				ifAttr: 'aria-pressed="false"',
+				relativeToRef: 'this',
+				click: true
+		}],
+		moveOverlays: [
+			{
+				// debug: true,
+				useReference: 'reference_1',
+				// waiting for the same el as in unmute
+				waitForElOnParentCssPath: '[class*="--DivVideoPlayerContainer"]',
+				cssPath: '[class*="--DivMediaCardOverlay "] > *, [class$="--DivMediaCardOverlay"] > *',
+				setCSSProperties: 'left: -500px; position: relative; pointer-events: all;'
+			},
+			// remove overlay
+			{
+				// debug: true,
+				useReference: 'reference_1',
+				// waiting for the same el as in unmute
+				waitForElOnParentCssPath: '[class*="--DivVideoPlayerContainer"]',
+				cssPath: '[class*="--DivMediaCardOverlay "], [class$="--DivMediaCardOverlay"]',
+				setCSSProperties: 'pointer-events: none;'
+			},
+			// always visible top bar; this does nothing, one in css above works
+			{
+				debug: true,
+				waitForElOnParentCssPath: 'REFERENCE_1 [class*="--DivVideoPlayerContainer"]',
+				setReferenceElementByCssPath_2: 'REFERENCE_1 [class*="-DivVolumeControlContainer"] button',
+				useReference: 'reference_2',
+				relativeToRef: 'this',
+				setCSSProperties: 'opacity: 1;'
+			}]
 	},
 	instagram: {
 		loop: [{
@@ -181,6 +254,8 @@ var sites = {
 		hidePageOverlays: [
 			// in anonymous: sign-in/login-in dialog. redundancy alternative.
 			{
+				'#': 'Blocking dialog. e.g. "Never miss a post..."',
+				debug: true,
 				cssPath: 'main > div:has([href="/accounts/emailsignup/"]), main > div:has([role="dialog"])',
 				setCSSProperties: 'display: none;'
 			},
@@ -196,11 +271,11 @@ var sites = {
 			}],
 		hideVideoOverlays: [{
 			// debug: true,
-			useReference: 'loopItem',
 			relativeToRef: 'nextElementSibling',
 			setCSSProperties: 'display: none;'
 		}]
 	},
+	// A: player for signed-in user
 	// B: player for anonymous, when not signed-in
 	facebook: {
 		loop: [{
@@ -209,23 +284,25 @@ var sites = {
 				// loopOverTagName
 				// loopOver<TagName|...> is used to create an Array to loop over, providing iterator's value with `loopItem`
 				loopOverTagName: 'video',
-				// setReferenceElementBy<tagName|...>_0 can create additional reference elements. (to loopItem)
-				// e.g. There are multiple <video> el., where each has ancestry starting at an el. which will be looped over.
-				// <video> itself is used a lot, so it will be stored in a `reference_<NUMBER>`.
-				// In cssPath, within a selector, also `REFERENCE_<NUMBER>|LOOPITEM|DOCUMENT` can be used, different or the same as in useReference.
-				// For use in two situations. 1. useReference was needed to set reference for something else in this job,
-				//  2. where sibling of the reference is needed, as `:scope + div` or `:scope ~ div` are not valid selectors
-				setReferenceElementByRelativePos_1: 'nextElementSibling'
-				// setReferenceElementBy<tagName|...>_0:
+				setReferenceElementByRelativeToLoopItem_1: 'nextElementSibling'
+
 				// just for DEBUG
-				, setReferenceElementByRelativePos_22: 'nextElementSibling'
-				, setReferenceElementByRelativePos_2: 'nextElementSibling'
-				, setReferenceElementByRelativePos_0: 'nextElementSibling'
-				, setReferenceElementByRelativePos_02: 'nextElementSibling'
+				, setReferenceElementByRelativeToLoopItem_22: 'nextElementSibling'
+				, setReferenceElementByRelativeToLoopItem_2: 'nextElementSibling'
+				, setReferenceElementByRelativeToLoopItem_0: 'nextElementSibling'
+				, setReferenceElementByRelativeToLoopItem_02: 'nextElementSibling'
 			}],
+		// action is not called from loop, ref is `document`
 		hidePageOverlays: [{
-				// B
+			// B
 				cssPath: '#scrollview ~ *', // login/register dialog
+				setCSSProperties: 'display: none;'
+			},
+			// B. cookies. sometimes is right after <div id="mount_0_0_Iq"> ,sometimes after #has-finished-comet-page
+			{
+				'#': 'cookies dialog, ADs, possibly other stuff',
+				// debug: true,
+				cssPath: 'body > div[id] ~ div',
 				setCSSProperties: 'display: none;'
 			}],
 
@@ -242,14 +319,12 @@ var sites = {
 		hideVideoOverlays_: [{
 				// B only. must not act on A, ifCssPath value below is present only on B
 				ifCssPath: 'DOCUMENT [data-pagelet="Reels"]', // is only on B
-				useReference: 'loopItem',
 				relativeToRef: 'nextElementSibling',
 				setCSSProperties: 'display: none;'
 			}],
 		// useReference is used for ifPropExists, but also for cssPath to get and unmute only one video
 		unmute: [{
 				// A (LOOPITEM ~ div button not on A, is it B?)
-				useReference: 'loopItem', // ref for ifPropExists
 				ifPropExists: 'muted',
 				// or also 'LOOPITEM ~ div > div'
 				waitForElOnParentCssPath: 'LOOPITEM ~ div [data-visualcompletion]',
@@ -266,7 +341,6 @@ var sites = {
 
 			{
 				// B, but A too. todo does it matter? prop muted is check, should not click if still muted
-				useReference: 'loopItem', // ref for ifPropExists
 				ifPropExists: 'muted',
 				cssPath: 'DOCUMENT [aria-label="Unmute"]',
 				click: true
@@ -282,29 +356,34 @@ var sites = {
 			// --- B. (and below) ---
 			{
 				// bottom overlay, top overlay
+				useReference: 'document',
 				cssPath: '[data-pagelet="Reels"] + div > div, [data-pagelet="Reels"] ~ div:last-child',
 				// this should be taken from width
 				setCSSProperties: 'left: -460px;'
 			},
 			// B. allow clicking through this moved element, to reach "prev" button, but allow all its smaller children (one below)
 			{
+				useReference: 'document',
 				cssPath: '[data-pagelet="Reels"] + div > div',
 				setCSSProperties: 'pointer-events: none;'
 			},
 			// B. see above
 			{
+				useReference: 'document',
 				cssPath: '[data-pagelet="Reels"] + div > div > *',
 // this should be taken from <video> width
 				setCSSProperties: 'pointer-events: all;'
 			},
 			// B. moved text will not be visible without this; 251228 "Card" changed to "card"
 			{
+				useReference: 'document',
 				cssPath: ':is([aria-label="Previous Card"], [aria-label="Previous card"]) + div > div',
 				setCSSProperties: 'overflow: visible'
 			},
 			// B.
 			// click on "See more". It's not always present
 			{
+				useReference: 'document',
 				ifCssPath: '[data-pagelet="Reels"] + div:not(:has([style*="--x-maxHeight:"]))',
 				cssPath: '[data-pagelet="Reels"] + div [role="button"]:not(:has(> *))',
 				click: true
@@ -313,18 +392,21 @@ var sites = {
 			// --- A. (and below) --- todo: limit to A
 			{
 				// debug: true,
+				useReference: 'document',
 				// can't use ifCssPath, it would "find" such el. on next video. the selector must contain LOOPITEM to be limited to current
 				// ifCssPath: '[data-video-id]:not([style*="width: 1024px"])',
 				cssPath: '[data-video-id]:not([style*="width: 1024px"]) LOOPITEM + div > div',
 				setCSSProperties: 'left: -450px;'
 			},
 			{
+				useReference: 'document',
 				cssPath: '[role="banner"] + div div:has([role="main"]), [data-video-id]',
 				setCSSProperties: 'overflow: visible'
 			},
 			// move JS slider over the HTML5 slider. JS slider does have thumbnail, which is a nice feature to preserve
 			{
 				// debug: true,
+				useReference: 'document',
 				waitForElOnParentCssPath: '[data-video-id] + div',
 				cssPath: '[role="slider"]',
 				setCSSProperties: 'top: -20px;'
@@ -333,8 +415,8 @@ var sites = {
 			{
 				waitForElOnParentCssPath: 'LOOPITEM ~ div > [data-visualcompletion]',
 				setReferenceElementByCssPath_1: 'LOOPITEM + div div:has(> [role="button"]):not(:has(> [role="button"] > *))',
- 				useReference: 'reference_1',
- 				ifTextIncludes: '…',
+				useReference: 'reference_1',
+				ifTextIncludes: '…',
 				// cssPath: 'LOOPITEM + div [role="button"]:not(:has(> *))',
 				relativeToRef: 'directChildren',
 				click: true
@@ -379,13 +461,7 @@ var sites = {
 };
 
 
-// should be outside of the isolation function, so DEBUG can be used in functions of script files included before this one.
-var DEBUG = ( GM && GM.info.script.name.indexOf('DEBUG') !== -1 ) ? -1 : false;
-// optional line
-DEBUG = ( GM && GM.info.script.name.split('DEBUG:')[1]?.substring(0,1)) || DEBUG;
-var LOG = DEBUG || (GM && GM_info.script.name.includes('LOG'));
-if (DEBUG == 's') { debugger; } // stop at beginning
-
+var DEBUG, LOG;
 var debugRunCnt = 0;
 if (LOG) { console.log('[Normal video player] START'); }
 
@@ -394,130 +470,189 @@ var config = {
 	hideMasthead: new Option('hideMasthead','Hide masthead').value
 };
 
-
 function modPage(jobs, loopItem, refData, loopID) {
 	if (!jobs?.length) { if (LOG) { console.log('[Normal video player] this action is not defined'); } return false; }
 		// sites[domainKey][type]?.forEach(job => {
-	jobs.forEach(job => { // note! if this will be changed to `for...of`, have to change `return` to `continue` inside
-			var arrEl, elRef = document;
+	jobs.forEach(modJob); // note! if this will be changed to `for...of`, have to change `return` to `continue` inside
 
-			// if (LOG) { console.log('[Normal video player] ****** job:', job); }
-			if (LOG) { /*console.groupEnd();*/ console.group('[Normal video player] job:', job); }
-			if (DEBUG == 2) { debugger; }
-			if (DEBUG == 3 && job.waitForElOnParentCssPath) { debugger; }
-			// if (DEBUG && job.debug) { debugger; }
-			if (DEBUG && DEBUG != 4 && job.debug === true) { debugger; }
+	function modJob(job, obsrvs) {
+		if (!(obsrvs instanceof Array)) { obsrvs = null; } // remove index (when called from forEach())
+		var arrEl;
 
-			nowOrLater();
-			function nowOrLater(obsrvs) { // todo: rename to modJob, add modJob directly as arg to: jobs.forEach(modJob)
+		// if (LOG) { console.log('[Normal video player] ****** job:', job); }
+		if (LOG) { /*console.groupEnd();*/ console.group('[Normal video player] job:', job); }
+		if (DEBUG == 2) { debugger; }
+		if (DEBUG == 3 && job.waitForElOnParentCssPath) { debugger; }
+		// if (DEBUG && job.debug) { debugger; }
+		if (DEBUG && DEBUG != 4 && job.debug === true) { debugger; }
 
-			/// complement - reference
-			//  process setReferenceElementBy_X entries within job
-			// Object.keys(job).filter(itm => itm.startsWith('setReferenceElementBy')).forEach(itm => {
-			// Object.keys(job).forEach(itm => {
-			processRefs(job, loopItem, refData, obsrvs);
+		/// complement - reference
+		// process useReference and setReferenceElementBy_* entries within a job
+		var elRef = processRefs(job, loopItem, refData, obsrvs, modJob);
+		// Node: `document` is not Element
+		if (!(elRef instanceof Node)) { console.groupEnd(); return; }
 
-			if (job.useReference) {
-				if (job.useReference === 'loopItem') { elRef = loopItem; }
-				if (job.useReference.startsWith('reference_')) {
-					const number = job.useReference.substring(10);
-					elRef = refData[number];
-					if (!elRef) { return; }
+
+		//// conditional
+		var condition = true;
+		// var waitableMissing = false; // something that can be waited upon by observer
+		// TEST replace placeholder like in cssPath, make it a function and call it from here
+		if (job.ifCssPath) {
+			const {query, elRefOnce} = replaceRef(job.ifCssPath, elRef, loopItem, refData);
+			let elPresent = elRefOnce.querySelector(':scope :is(' + query + ')');
+			condition &&= elPresent;  // jshint ignore:line
+			// if (!elPresent && (obsrvs?.length || !waitForMutation(job, elRef, loopItem, refData))) { return; } // if is there something to wait upon
+			if (!elPresent) {
+				if (!obsrvs?.length) {
+					if (!waitForMutation(job, elRef, loopItem, refData, modJob)) { // has observers which can be set up
+						if (LOG) { console.log('[Normal video player] %cifCssPath not present', 'color: orange', job, 'loopItem:',loopItem, 'refData', refData, 'loopID:', loopID); }
+					}
 				}
+				console.groupEnd();
+				return;
 			}
+		}
+		if (job.ifPropExists) { condition &&= elRef[job.ifPropExists]; }  // jshint ignore:line
+		if (job.ifAttr) {
+			let [prop, val] = job.ifAttr.split('=');
+			if (val === undefined) { val = ''; } // for attr without value. todo: test
+			if ((val[0] === '"' && val[val.length - 1] === '"') || (val[0] === "'" && val[val.length - 1] === "'")) {
+				val = val.substring(1, val.length - 1);
+			}
+			condition &&= elRef.getAttribute(prop) === val; // jshint ignore:line
+		}
+		
+		if (job.ifTextIncludes) { condition &&= elRef.textContent.includes(job.ifTextIncludes); } // jshint ignore:line
 
-				//// conditional
-				var condition = true;
-				// var waitableMissing = false; // something that can be waited upon by observer
-				// TEST replace placeholder like in cssPath, make it a function and call it from here
-				if (job.ifCssPath) {
-					const {query, elRefOnce} = replaceRef(job.ifCssPath, elRef, loopItem, refData);
-					let elPresent = elRefOnce.querySelector(':scope :is(' + query + ')');
-					condition &&= elPresent;  // jshint ignore:line
-					// if (!elPresent && (obsrvs?.length || !waitForMutation(job, elRef, loopItem, refData))) { return; } // if is there something to wait upon
-					if (!elPresent) {
-						if (!obsrvs?.length) {
-							if (!waitForMutation(job, elRef, loopItem, refData)) { // has observers which can be set up
-								if (LOG) { console.log('[Normal video player] %cifCssPath not present', 'color: orange', job, 'loopItem:',loopItem, 'refData', refData, 'loopID:', loopID); }
-							}
-						}
-						return;
-					}
+
+		//// designators
+		if (job.cssPath) {
+			const {query, elRefOnce} = replaceRef(job.cssPath, elRef, loopItem, refData);
+			arrEl = Array.from(elRefOnce.querySelectorAll(':scope :is(' + query + ')'));
+		}
+		if (job.tagName) {
+			arrEl = Array.from(elRef.getElementsByTagName(job.tagName));
+		}
+		if (job.relativeToRef) {
+			switch (job.relativeToRef) {
+			  case 'this':
+				arrEl = [elRef];
+				break;
+			  case 'nextElementSibling':
+				arrEl = [elRef.nextElementSibling];
+				break;
+			  case 'directChildren':
+				arrEl = Array.from(elRef.children);
+				break;
+			  default:
+				console.error('[Normal video player] wrong value of designator: ' + job.relativeToRef, job);
+				break;
+			}
+		}
+
+
+		//// wait
+		// no designators found but a wait complement defined and this is not already run from observer -> observe
+		// currently observers are set up even when `condition` above are not met (false), when waited el appear conditions are checked again
+		// if ((!arrEl?.length || waitableMissing) && job.waitForElOnParentCssPath && !waitedArrived) {
+		// if (!arrEl?.length && job.waitForElOnParentCssPath && !waitedArrived) {
+		// why, no, there is nothing useful waitForMutation can return
+		// waitForMutation() returns false if it can't find observer points and there is nothing to wait for
+		if (!arrEl?.length) {
+			if (!obsrvs?.length) {
+				if (!waitForMutation(job, elRef, loopItem, refData, modJob)) { // has observers which can be set up
+
+					/// LOG target el not found
+					// if LOG: This is not error in production condition, as there could be a job which does not always have work.
+					// todo: can not show domain key and type anymore here. try add something more useful to log msg
+					if (LOG) { console.log('[Normal video player] %ctarget not found by any designator', 'color:red', job, 'loopItem:',/*loopItem,*/ 'refData', refData, 'loopID:', loopID); } // XXXX loopItem is El. does it matter in this console.log? yes, disabling
 				}
-				if (job.ifPropExists) { condition &&= elRef[job.ifPropExists]; }  // jshint ignore:line
-				if (job.ifTextIncludes) { condition &&= elRef.textContent.includes(job.ifTextIncludes); } // jshint ignore:line
-
-
-				//// designators
-				if (job.cssPath) {
-					const {query, elRefOnce} = replaceRef(job.cssPath, elRef, loopItem, refData);
-					arrEl = Array.from(elRefOnce.querySelectorAll(':scope :is(' + query + ')'));
-				}
-				if (job.tagName) {
-					arrEl = Array.from(elRef.getElementsByTagName(job.tagName));
-				}
-				if (job.relativeToRef) {
-					switch (job.relativeToRef) {
-					  case 'nextElementSibling':
-						arrEl = [elRef.nextElementSibling];
-						break;
-					  case 'directChildren':
-						arrEl = Array.from(elRef.children);
-						break;
-					  default:
-						console.error('[Normal video player] wrong value of designator: ' + job.relativeToRef, job);
-						break;
-					}
-				}
-
-
-				//// wait
-				// no designators found but a wait complement defined and this is not already run from observer -> observe
-				// currently observers are set up even when `condition` above are not met (false), when waited el appear conditions are checked again
-				// if ((!arrEl?.length || waitableMissing) && job.waitForElOnParentCssPath && !waitedArrived) {
-				// if (!arrEl?.length && job.waitForElOnParentCssPath && !waitedArrived) {
-				// why, no, there is nothing useful waitForMutation can return
-				// waitForMutation() returns false if it can't find observer points and there is nothing to wait for
-				if (!arrEl?.length) {
-					if (!obsrvs?.length) {
-						if (!waitForMutation(job, elRef, loopItem, refData)) { // has observers which can be set up
-
-							/// LOG target el not found
-							// if LOG: This is not error in production condition, as there could be a job which does not always have work.
-							// todo: can not show domain key and type anymore here. try add something more useful to log msg
-							if (LOG) { console.log('[Normal video player] %ctarget not found by any designator', 'color:red', job, 'loopItem:',loopItem, 'refData', refData, 'loopID:', loopID); }
-						}
-					}
-					return;
-				}
-				// before `if (!condition)` as that's not waited upon. no need to observe anymore
-				obsrvs?.forEach(o => o.disconnect());
-
-
-				//// actors
-				if (!condition) { return; } // to next job
-				if (!arrEl?.forEach) debugger;
-				arrEl?.forEach(el => {
-					if (job.setCSSProperties) {
-						el.style.cssText = el.style.cssText + job.setCSSProperties;
-					}
-					if (job.click) {
-							el.click();
-					}
-					if (LOG) { console.info('[Normal video player] actors were executed on element:', el, 'job:', job, 'loopItem:',loopItem, 'refData', refData, 'loopID:', loopID); }
-				});
-				// old comment, when disconnect was here
-				// or only remove when observer when the target arrEl was found? but when the observed el was found but did not have arrEl,
-				// what else is there to wait for?
-				// Another point, Maybe there will be an option to not remove the observer, it might be the observed el keeps disappearing and job on arrEl should be repeatedly done.
-				// if (arrEl?.length) { obs?.disconnect(); if (LOG) { console.log('[Normal video player] observer disconnected (removed)'); }}
 			}
 			console.groupEnd();
-	}); // jobs.forEach(job => {
+			return;
+		}
+		// before `if (!condition)` as that's not waited upon. no need to observe anymore
+		obsrvs?.forEach(o => o.disconnect());
+
+
+		//// actors
+		if (!condition) { console.groupEnd(); return; } // to next job
+		if (!arrEl?.forEach) debugger;
+		arrEl?.forEach(el => {
+			if (job.setCSSProperties) {
+				el.style.cssText = el.style.cssText + job.setCSSProperties;
+			}
+			if (job.click) {
+				// debugger;
+				console.log('[Normal video player]cl: click() | aria-pressed before click(): ' + el.getAttribute('aria-pressed') + ` | video muted: ${loopItem.muted}`, performance.now());
+				el.click();
+		//// debug. tiktok only, found that muted property does not immediately follow svg icon state
+				// debugClick();
+				function debugClick() {
+					console.log('[Normal video player]cl: click() after | aria-pressed before click(): ' + el.getAttribute('aria-pressed') + ` | video muted: ${loopItem.muted}`, performance.now());
+					performance.mark('click');
+					// debugger;
+					new MutationObserver(mutations => {
+						mutations.forEach(mut => {
+							// debugger;
+							if (mut.attributeName === 'aria-pressed') {
+								console.log('[Normal video player]cl: aria-pressed(= not muted): ' + el.getAttribute('aria-pressed') + ` | video muted: ${loopItem.muted}`, performance.now());
+								performance.mark('aria-pressed', {
+								  detail: { pressed: el.getAttribute('aria-pressed') },
+								});
+							}
+						});
+
+					}).observe(el, {
+						attributes: true
+					});
+					new MutationObserver(mutations => {
+						mutations.forEach(mut => {
+							debugger;
+							// aria-pressed="true"
+						});
+
+					}).observe(loopItem, {
+						attributes: true
+					});
+					// <svg>
+					new MutationObserver(mutations => {
+						mutations.forEach(mut => {
+							// debugger;
+							console.log('[Normal video player]cl: changing SVG | aria-pressed(= not muted): ' + el.getAttribute('aria-pressed') + ` | video muted: ${loopItem.muted}`, performance.now());
+						});
+
+					}).observe(el.querySelector('svg').parentNode, {
+						childList: true,
+					  subtree: true,
+					});
+					
+					setInterval((el) => {
+					}, 100);
+					setTimeout(() => {
+						const loginMeasure = performance.measure(
+						'click',
+						'aria-pressed',
+						);
+						console.log(loginMeasure.duration);
+					}, 5000);
+		////
+				}
+			}
+			if (LOG) { console.log('[Normal video player] actors were executed on element:', 'XXXX', 'job:', job, 'loopItem:','XXXX', 'refData', refData, 'loopID:', loopID); }
+			// if (LOG) { console.info('[Normal video player] actors were executed on element:', el, 'job:', job, 'loopItem:',loopItem, 'refData', refData, 'loopID:', loopID); }
+		});
+		// old comment, when disconnect was here
+		// or only remove when observer when the target arrEl was found? but when the observed el was found but did not have arrEl,
+		// what else is there to wait for?
+		// Another point, Maybe there will be an option to not remove the observer, it might be the observed el keeps disappearing and job on arrEl should be repeatedly done.
+		// if (arrEl?.length) { obs?.disconnect(); if (LOG) { console.log('[Normal video player] observer disconnected (removed)'); }}
+		console.groupEnd();
+	} // modJob
 }
 
 // return: all waitFor* must find at least one element or waitForMutation() will return false
-function waitForMutation(job, elRef, loopItem, refData) {
+function waitForMutation(job, elRef, loopItem, refData, handler) {
 	var observers = [];
 	for (const par in job) {
 		switch (par) {
@@ -538,9 +673,8 @@ function waitForMutation(job, elRef, loopItem, refData) {
 						for (const node of mut.addedNodes) {
 							if (!(node instanceof Element)) { continue; } // Processing a #Text node will error
 							if (node instanceof HTMLStyleElement) { continue; }
-							if (LOG) { console.log('[Normal video player] observer runs nowOrLater()'); }
-							// nowOrLater(thisObserver);
-							nowOrLater(observers); // need all observers for this job, so they all can be disconnected
+							if (LOG) { console.log('[Normal video player] observer runs modJob(job, obsrvs)'); }
+							handler(job, observers); // need all observers for this job, so they all can be disconnected
 							return; // from observer event
 						}
 					}
@@ -551,7 +685,8 @@ function waitForMutation(job, elRef, loopItem, refData) {
 					childList: true
 				});
 				observers.push(thisObserver);
-				if (LOG) { console.debug('[Normal video player] observer set on', elObserveOn, job/*, loopID*/); }
+				if (LOG) { console.debug('[Normal video player] observer set on', 'XXXX', job/*, loopID*/); }
+				// if (LOG) { console.debug('[Normal video player] observer set on', elObserveOn, job/*, loopID*/); }
 			});
 			break;
 		} // switch
@@ -560,8 +695,18 @@ function waitForMutation(job, elRef, loopItem, refData) {
 	} else { return false; }
 }
 
-// elRef: when this is called, elRef was either `document`, or an el. obtained by `useReference`.
-//        if this function makes a change to query, it will also replace elRef value with `document` and returns in elRefOnce
+
+/**
+ * Checks `query` for reference keywords, replaces them with a classname, creates that classname on referenced element (if there is not one already) and sets elRefOnce to `document` in case any reference was replaced.
+ * @method replaceRef
+ * @param  {String}   query    A CSS query possibly with some keywords
+ * @param  {Element}  elRef    Element returned in elRefOnce, if no substitution was done by this function.
+ *                             It was obtained from useReference, or set to `document` if useReference was not defined before
+ * @param  {Element}  loopItem Element of the current loop used to replace keyword LOOPITEM
+ * @param  {Object}   refData  A table with reference names and real Elements they reference
+ * @return {Object}            {query: modified query which can be used to find Elements,
+ *                              elRefOnce: elRef or `document` if any replacement was done}
+ */
 function replaceRef(query, elRef, loopItem, refData) {
 	var elRefOnce = elRef;
 	switch (true) {
@@ -599,16 +744,38 @@ function replaceRef(query, elRef, loopItem, refData) {
 	return {query, elRefOnce};
 }
 
-// process setReferenceElementBy*
-function processRefs(job, currentElement, refData, obsrvs) {
+// process setReferenceElementBy_* entries within a job
+// refData: output
+
+/**
+ * Finds all directives setReferenceElementBy*_NUMBER in `job` and resolve to a HTMLElement. Adds it to refData under NUMBER as a key.
+ * If not called from an observer (obsrvs in null), check if job contains any wait* directives by waitForMutation() (which will also register an observer)
+ * @method processRefs
+ * @param  {Object}    job            [description]
+ * @param  {Element}   currentElement Currently looped HTMLElement
+ * @param  {Object}    refData        Object with references of key - HTMLElement associations
+ * @param  {Array}     obsrvs         Array of Observers. Only to check if some were already registered.
+ * @return {Element|Boolean}          Element from useReference, or `currentElement` if not used. false: failure to find; true: will wait
+ */
+function processRefs(job, currentElement, refData, obsrvs, handler) {
+	var elRef = currentElement;
+
+	// before new references are added by setReferenceElementBy*
+	if (job.useReference) {
+		// if (job.useReference.toLowerCase() === 'loopitem') { elRef = loopItem; // when document was default
+		if (job.useReference.toLowerCase() === 'document') { elRef = document;
+		} else if (job.useReference.toLowerCase().startsWith('reference_')) {
+			const number = job.useReference.substring(10);
+			elRef = refData[number] || elRef;
+		}
+	}
+
 	for (const param in job) {
 		if (!param.startsWith('setReferenceElementBy')) { continue; }
-		// console.log(param);
-		// if (DEBUG && DEBUG != 4) debugger;
 		const arPar = param.split('_');
 		if (!arPar[1]) { console.error('[Normal video player] setReferenceElementBy* missing number'); continue; }
 		switch (arPar[0]) {
-		  case 'setReferenceElementByRelativePos':
+		  case 'setReferenceElementByRelativeToLoopItem':
 			switch (job[param]) {
 			  case 'nextElementSibling':
 				refData[arPar[1]] = currentElement.nextElementSibling;
@@ -619,21 +786,39 @@ function processRefs(job, currentElement, refData, obsrvs) {
 			}
 			break;
 		  case 'setReferenceElementByCssPath':
-		  	// setReferenceElementBy* never uses elRef, so elRefOnce is unused too, query starts from `document`
-			const {query, elRefOnce} = replaceRef(job[param], currentElement, currentElement, refData);
-			// write in to `refData[arPar[1]]` even when `null` to overwrite old value
-			refData[arPar[1]] = document.querySelector(':scope :is(' + query + ')');
+			const {query, elRefOnce} = replaceRef(job[param], elRef, currentElement, refData);
+			// before: setReferenceElementBy* never uses elRef, so elRefOnce is unused too, query starts from `document`
+			// const {query} = replaceRef(job[param], currentElement, currentElement, refData);
+			// write to `refData[arPar[1]]` even when `null` to overwrite old value
+			refData[arPar[1]] = elRefOnce.querySelector(':scope :is(' + query + ')');
 			if (!refData[arPar[1]]) {
 				if (!obsrvs || !obsrvs.length) {
-					if (!waitForMutation(job, document, currentElement, refData)) { // has observers which can be set up
-						if (LOG) { console.log('[Normal video player] %c' + param + ' not present', 'color: red', job, 'currentElement:',currentElement, 'refData', refData/*, 'loopID:', loopID*/); }
+					if (!waitForMutation(job, document, currentElement, refData, handler)) { // has observers which can be set up
+						console.error('[Normal video player] setReferenceElementByCssPath failed to find an Element: ' + job[param], job);
+						// if (LOG) { console.log('[Normal video player] %c' + param + ' not present', 'color: red', job, 'currentElement:',currentElement, 'refData', refData/*, 'loopID:', loopID*/); }
+						return false;
 					}
 				}
-				return;
+				// will be waiting
+				return true;
 			}
 			break;
 		}
 	}
+
+	// after new references are added by setReferenceElementBy*, also rewrite those found before
+	if (job.useReference) {
+		if (job.useReference.toLowerCase().startsWith('reference_')) {
+			const number = job.useReference.substring(10);
+			elRef = refData[number];
+			if (!elRef) {
+				console.error(`[Normal video player] ${job.useReference} not present, in job:`, job);
+				return false;
+			}
+		}
+	}
+
+	return elRef;
 }
 
 function addCSS(strCss) {
@@ -649,10 +834,12 @@ function loop(actions, handler, id) {
 }
 
 function action() {
+	if (LOG || DEBUG) { debugRunCnt++; }
 	// when debugging, run just once on:
-	// if (DEBUG && ++debugRunCnt !== 4) { return; } // debug 2nd run. after 1sec
-	if (DEBUG && ++debugRunCnt !== 2) { return; } // debug 2nd run. after 1sec
-	// if (DEBUG && ++debugRunCnt !== 1) { return; } // debug 1st run (might be too soon to debug most of situations)
+	if (DEBUG && debugRunCnt !== 2) { return; } // debug 2nd run. after 1sec
+	// if (DEBUG && debugRunCnt !== 3) { return; }
+	// if (DEBUG && debugRunCnt !== 4) { return; }
+	// if (DEBUG && debugRunCnt !== 1) { return; } // debug 1st run (might be too soon to debug most of situations)
 
 	if (LOG) { console.log('[Normal video player] START action() run for the ' + debugRunCnt + ' time'); }
 	var fixesDone = 0;
@@ -663,7 +850,7 @@ function action() {
 	domainKeys?.forEach(domainKey => {
 		var actions = sites[domainKey];
 		addCSS(actions.css);
-		modPage(actions.hidePageOverlays);
+		modPage(actions.hidePageOverlays, document);
 
 // todo will separate the loop code in its function, so that action() can just call it with some params and callback
 // debugger;
@@ -692,7 +879,8 @@ function action() {
 
 				//// read setReferenceElementBy*_# from loop property, set to refData object
 				// this is done again for every iteration of loop, as setReferenceElementBy*_# can use iterated element as reference
-				processRefs(propLoop, elVideo, refData);
+				processRefs(propLoop, elVideo, refData, action); 
+				// adding action here as handler, will this re-run OK in case wait is in loop? would need some exit from the bad run
 
 				isVideoPresent = true;
 				// if (LOG) { console.log('[Normal video player] START forEach() on video: ', elVideo); }
@@ -756,7 +944,7 @@ function action() {
 		} // for (const propLoop of actions.loop) {
 
 		if (config.hideMasthead) {
-			modPage(actions.hideMasthead);
+			modPage(actions.hideMasthead, document);
 		}
 	}); // domainKeys?.forEach(domainKey => {
 
