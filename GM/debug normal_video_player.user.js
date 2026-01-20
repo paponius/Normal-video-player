@@ -35,11 +35,12 @@
 
 
 //// REQUIRE directives
+// @require        file:///H:\Projects\JS\Normal-video-player\lib\GM_common.js
 // @require        file:///H:\Documents\coding\JS\Snippets\MutationObserver\debug_tool_find_mutated_elements.js
 // 
 // @require        file:///H:\Projects\JS\Normal-video-player\lib\GM_menu_command.js
 // @require        file://H:\Projects\JS\Normal-video-player\src\normal_video_player.js
-
+// @require        file://H:\Projects\JS\Normal-video-player\src\video_controls.js
 
 //// Allowing everything in this debug US:
 // @match          *://*/*

@@ -1,8 +1,13 @@
 # Normal video player
 
-Some sites tend to limit what a user can do with video player. It's important a user won't click away, skip AD, sometimes even reverse/forward, switch full-screen, change speed. While the video window is covered with a shade, some icons, text in an all-together mash. The video starts playing right away, but muted, as that's the rules applied by specifications of the web (bad people banning free, but uninvited speech)
+### For all sites with HTML5 video
+Full video control. Speed from 0 to 8x, skip forward/backwards 1/5/10 secs steps, mute button, pause/play, full-screen, next, all without a need to touch a mouse to click on the video.
+(not all mentioned is implemented yet)
+Plan to make a control panel with more options and some mobile support.
 
-This script fixes that.
+Some sites tend to limit what a user can do with video player. It's important (for them) a user is barred from clicking away, skipping AD, sometimes even reverse/forward, switch full-screen, change speed is blocked. While the video window is covered with a shade, many icons, text in an all-together mash. The video starts playing right away, but muted, that means someone who really wants to see the video must pause, un-mute, reverse.
+
+This is a fix for that.
 
 - no overlays (on Desktop)
 - no video shades
@@ -14,10 +19,16 @@ This script fixes that.
 - possibility to block next video (not yet)
 
 
-## Sites (so far)
+## Sites
+Keyboard shortcuts works on possibly all sites with HTML5 video.
+stopping, un-muting, reversing is possible for all sites, planned, not yet implemented.
+Save video or screenshot, for some, planned.
+Bookmarks, play from-to marks, sharing to someone with this script, planned for later.
+
+### DeAnnoying - cleaning up video portal
 facebook.com/reels/  
 instagram.com/reels/  
-google.com/shorts/    it adds a button to redirect to normal YouTube player. (this is not yet implemented)
+google.com/shorts/    it adds a button to redirect to normal YouTube player. planned.
 
 
 

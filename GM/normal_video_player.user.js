@@ -23,7 +23,7 @@
 // @namespace      https://github.com/paponius/
 // @description    Video controls, seek, full screen, speed. Separated video and text. No overlays.
 // @author         papo
-// @version        0.11.0
+// @version        1.0.4
 // @license        CC BY-NC-SA 4.0
 // ###icon           https://www.google.com/s2/favicons?sz=64&domain=yyy.yy
 
@@ -32,13 +32,14 @@
 // @grant          GM_unregisterMenuCommand
 // @grant          GM_registerMenuCommand
 
+// @match          *://*/*
+// #match          https://www.instagram.com/reel/*
+// #match          https://www.facebook.com/reel/*
+// #match          https://www.tiktok.com/*
 
-// @match          https://www.instagram.com/reel/*
-// @match          https://www.facebook.com/reel/*
-// @match          https://www.tiktok.com/*
-// YYY match          *://*.yyy.com/yyy/yyy*/*
-
+// @require        https://github.com/paponius/Normal-video-player/raw/master/lib/GM_common.js
 // @require        https://github.com/paponius/Normal-video-player/raw/master/lib/GM_menu_command.js
 // @require        https://github.com/paponius/Normal-video-player/raw/master/src/normal_video_player.js?v0.9
+// @require        https://github.com/paponius/Normal-video-player/raw/master/src/video_controls.js?v0.9
 
 // ==/UserScript==

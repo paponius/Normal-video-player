@@ -1,0 +1,20 @@
+Keyboard will control:
+First video that starts playing. (itself by autoplay, or by pushing a play button)
+When another video starts playing in parallel with previous one, and is un-muted, it will become the controlled one.
+
+Play button
+Play button can be the same as pause button. In such case, when a video is targeted to play and another one is still playing,
+this common play/pause button will both pause the previous video and start playing the new one.
+The most visible video on screen, or the first one if multiple are completely visible will play on play button push.
+
+How media elements are found
+On page load, the page is scanned for media elements including all in Shadow DOM.
+This will not find elements lazy loaded, or loaded interactively,
+such will be found when they start playing (by playing listener) if they are not in Shadow DOM,
+or when they are clicked also in Shadow DOM.
+
+Not done because too heavy
+Observing DOM changes on the whole page (each element) for media insertions. As this is universal (for all sites), it's unknown where media will appear.
+Getting all elements and checking which are currently visible on each click and/or page scroll.
+Searching for all Shadow DOM with timer or on click/scroll.
+But possibly per site will Mutation observer registering specific elements.
