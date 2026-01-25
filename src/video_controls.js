@@ -89,10 +89,8 @@ function assignVideo(event) {
 		} else if (elVideo.dataset.muted === 'false') { elVideo.muted = false; }
 		if (LOG) { console.log(`[video_controls] mute: todo: should probably check if mute state was actually changed before. Saved mute state: ${elVideo.dataset.muted}`); }
 	}
-	// todo  probably need to check false too, for a case this is not defined yet.
-	//       Sometimes video is being paused by browser, saying user did not interact.
-	//       Also, maybe this should be checked twice. When browser pause the video becasue it was un-muted here, it will still not un-mute it.
-	//       but maybe I saw that wrongly
+	// todo  When it's un-muted here, browser will say no interaction and will pause it. BUT the video will remain muted.
+	//       maybe should check twice and un-mute again
 
 	if (event.target === elVideo) { return; } // elVideo could also be undefined/null here
 	if (!elVideo) {
@@ -340,7 +338,6 @@ function findMediaInWholeDoc(docRoot) {
 	);
 	var currentNode;
 	while ((currentNode = nodeIterator.nextNode())) {
-		intersectionObserver.observe(currentNode);
 		return currentNode;
 	}
 }
@@ -354,7 +351,7 @@ function findMediaInWholeDoc(docRoot) {
  */ 
 
 document.addEventListener("click", (event) => {
-	if (DEBUG) console.log('[video_controls]',document.elementsFromPoint(event.x, event.y));
+	if (DEBUG) console.debug('[video_controls] event click START | elementsFromPoint:',document.elementsFromPoint(event.x, event.y));
 	// console.log(event.target.elementsFromPoint(event.x, event.y));
 	function findMediaFromPoint(doc) {
 		var elFound;
@@ -363,7 +360,7 @@ document.addEventListener("click", (event) => {
 			if (! doc.contains(elem)) { return; }
 			if (elem instanceof HTMLMediaElement) { elFound = elem; return true; } // from *some()*
 			if (elem.shadowRoot) {
-				if (DEBUG) console.debug('[video_controls]', elem.shadowRoot, elem.shadowRoot.elementsFromPoint(event.x, event.y));
+				if (DEBUG) console.debug('[video_controls] found Shadow DOM:', elem.shadowRoot, elem.shadowRoot.elementsFromPoint(event.x, event.y));
 				elem.shadowRoot.addEventListener("playing", assignVideo, { capture: true });
 				elem.shadowRoot.addEventListener("pause", divestVideo, { capture: true });
 				elFound = findMediaFromPoint(elem.shadowRoot); // finds only those intersecting
@@ -376,7 +373,7 @@ document.addEventListener("click", (event) => {
 	}
 	var elClickedVideo = findMediaFromPoint(document);
 	if (elClickedVideo) {
-		if (elVideo) {
+		if (elVideo && elVideo !== elClickedVideo) {
 			elVideo.pause();
 			divestVideo({target: elVideo});
 		}
