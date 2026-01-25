@@ -333,6 +333,17 @@ function handlePressedKey(event) {
 	}
 }
 
+function findMediaInWholeDoc(docRoot) {
+	const nodeIterator = document.createNodeIterator(docRoot, NodeFilter.SHOW_ELEMENT, node => 
+		node instanceof HTMLMediaElement ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+	);
+	var currentNode;
+	while ((currentNode = nodeIterator.nextNode())) {
+		intersectionObserver.observe(currentNode);
+		return currentNode;
+	}
+}
+
 /* Video inside a ShadowDOM will not trigger *playing* listener outside of it.
    i.e. `document.addEventListener("playing", assignVideo, { capture: true });` will not catch such <video>
    This code block will listen on all clicks and iterate all elements (not only topmost clicked element but also those underneath it) which are on the location where pointer caused the click event. These are usually/always? also all parent elements up to the *document* (or document-fragment in Shadow DOM) (and also any other elements drown on the location of the click event and its parents)?
@@ -341,11 +352,10 @@ function handlePressedKey(event) {
    That means, clicking on a video, even if it's covered by an overlay, will get the video.
  */ 
 
-/* Does not work for NYTimes videos, they have pointer-events: none (as well video's parent) */
 document.addEventListener("click", (event) => {
 	if (DEBUG) console.log('[video_controls]',document.elementsFromPoint(event.x, event.y));
 	// console.log(event.target.elementsFromPoint(event.x, event.y));
-	function findVideo(doc) {
+	function findMediaFromPoint(doc) {
 		var elFound;
 		doc.elementsFromPoint(event.x, event.y).some(elem => {
 			// Not needed, as elem is outside of doc, next line will return anyway: if (elem.shadowRoot === doc) { return; }
@@ -353,15 +363,22 @@ document.addEventListener("click", (event) => {
 			if (elem instanceof HTMLMediaElement) { elFound = elem; return true; } // from *some()*
 			if (elem.shadowRoot) {
 				if (DEBUG) console.debug('[video_controls]', elem.shadowRoot, elem.shadowRoot.elementsFromPoint(event.x, event.y));
-				elFound = findVideo(elem.shadowRoot);
+				elem.shadowRoot.addEventListener("playing", assignVideo, { capture: true });
+				elem.shadowRoot.addEventListener("pause", divestVideo, { capture: true });
+				elFound = findMediaFromPoint(elem.shadowRoot); // finds only those intersecting
+				if (elFound) { return true; }
+				elFound = findMediaInWholeDoc(elem.shadowRoot);
 				if (elFound) { return true; }
 			}
 		});
 		return elFound;
 	}
-	var elShadowVideo = findVideo(document);
-	if (elShadowVideo) {
-		elShadowVideo.addEventListener("playing", assignVideo, { capture: true });
-		elShadowVideo.addEventListener("pause", divestVideo, { capture: true });
+	var elClickedVideo = findMediaFromPoint(document);
+	if (elClickedVideo) {
+		if (elVideo) {
+			elVideo.pause();
+			divestVideo({target: elVideo});
+		}
+		assignVideo({target: elClickedVideo});
 	}
 }, { capture: true });
