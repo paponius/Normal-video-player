@@ -199,9 +199,10 @@ function stopProp(event) {
 function handlePressedKey(event) {
 	// If the pressed key is coming from any input field, do nothing.
 	const target = event.target;
-	if (LOG) { console.debug(`%c[video_controls] event: handlePressedKey(event) | key: ${event.key} | type: ${event.type}` ,'color: cyan;', event.target, elVideo); }
 	if (target.localName === "input" || target.localName === "textarea" || target.isContentEditable) { return; }
 	if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) { return; }
+	if (LOG) { console.debug(`%c[video_controls] event: handlePressedKey(event) | key: ${event.key} | type: ${event.type} | event.remapped: ${event.remapped}` ,'color: cyan;', event.target, elVideo, event); }
+	if (event.remapped === true) { return; }
 
 	// Watching all three events, also the deprecated keypress. On e.g. TikTok, keydown is blocked for all keys, keypress does not work for arrows, keyup is not optimal, but it's at least something.
 	// Act either on down/push or up, not both. Each pressed button is remembered to disable acting on it on the way up.

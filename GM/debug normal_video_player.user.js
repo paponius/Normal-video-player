@@ -40,6 +40,7 @@
 // 
 // @require        file:///H:\Projects\JS\Normal-video-player\lib\GM_menu_command.js
 // @require        file://H:\Projects\JS\Normal-video-player\src\normal_video_player.js
+// @require        file://H:\Projects\JS\Normal-video-player\src\remap_shortcut_keys.js
 // @require        file://H:\Projects\JS\Normal-video-player\src\video_controls.js
 
 //// Allowing everything in this debug US:
