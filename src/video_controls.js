@@ -120,13 +120,7 @@ function divestVideo(event) {
 	elVideo = null;
 }
 
-function showToast(message, delay = 1400) {
-	if (!elToast) {
-		const elToastPar = document.createElement('DIV');
-		elToast = document.createElement('DIV');
-		const elStyle = document.createElement('STYLE');
-		// elToastPar.style.cssText = `
-		elStyle.textContent = `
+var cssToast = `
 			@keyframes video-control-toast-fadeinout {
 				0% {
 					opacity:0
@@ -141,14 +135,13 @@ function showToast(message, delay = 1400) {
 			}
 			.video-control-toast {
 				all: revert;
-				animation: video-control-toast-fadeinout 1.5s cubic-bezier(.05,0,0,1) 1 normal forwards;
-
+				animation: video-control-toast-fadeinout var(--video-control-toast-timeout, 1500ms) cubic-bezier(.05,0,0,1) 1 normal forwards;
 				text-align: center;
 				position: absolute;
 				left: 0;
 				right: 0;
 				top: 10%;
-				z-index: 19; /* 2147483647 */
+				z-index: 19;
 
 				margin: 0;
 				padding: 0;
@@ -170,20 +163,49 @@ function showToast(message, delay = 1400) {
 				color: #eeec;
 			}
 		`;
-		elToastPar.classList.add('video-control-toast');
+var sheetToast = new CSSStyleSheet();
+sheetToast.replace(cssToast).catch((err) => { console.error("[video_controls] Failed to replace styles:", err); });
+
+/**
+ * Shows a toast - notification message on top of a media for a short period of time, then removes itself.
+ *
+ * elToast: variable defined in parent scope, but used only within showToast(). elToast holds toast elements which
+ *   are created only once, on first use of showToast(). Subsequent use of showToast() will re-use elToast elements
+ *   with the same or any other media element. DOM will remove elToast from old parent when it's added to another location.
+ *   It also means there can't be two toasts simultaneously. On purpose or by a mistake.
+ *   The presence of elToast is also used to indicate if style was already injected to page.
+ * Toast style is now injected using *style* element to main *document*, but it's using adoptedStyleSheet for Shadow DOM.
+ *   There is no special reason for that, just to test and see which way proves better, if any.
+ * timToast: variable defined in parent scope, but used only within showToast(). Variable is used to cancel timer when
+ *   new message arrives. As the elToast is reused, old timer would remove the new message prematurely.
+ * Removing of the elToast is actually not necessary, as the animation within its CSS will make it opaque within timeout time.
+ * But it's better to remove it, so it will not interfere with something.
+ *
+ * @method showToast
+ * @param  {String}  message Text to show in the toast message
+ * @param  {Number}  timeout How long will the message stay on screen. With a default value defined.
+ * @return {Null}
+ */
+function showToast(message, timeout = 1500) {
+	if (!elToast) {
+		const elStyle = document.createElement('STYLE');
+		elStyle.textContent = cssToast;
 		document.head.appendChild(elStyle); 
+		// alt: document.adoptedStyleSheets = [sheetToast];
+
+		const elToastPar = document.createElement('DIV');
+		elToast = document.createElement('DIV');
+		elToastPar.classList.add('video-control-toast');
 		elToastPar.appendChild(elToast);
 	} else { clearTimeout(timToast); }
 
 	elToast.textContent = message;
-	// insertAdjacentElement() will not insert the same element multiple times on another call. It will just reinsert the same one.
-	// That is desired, when timer was cancelled and previous element not removed by it.
+	if (timeout !== 1500) { elToast.parentElement.style.setProperty('--video-control-toast-timeout', timeout + 'ms');
+	} else { elToast.parentElement.style.removeProperty('--video-control-toast-timeout'); }
 	elVideo.insertAdjacentElement('afterend', elToast.parentElement);
-
-	// timToast needed for canceling timer when new message arrives, as the el is reused. So it will not be removed prematurely
 	timToast = setTimeout(() => {
 		elToast.parentElement.remove();
-	}, delay);
+	}, timeout);
 }
 
 // todo maybe remove. was used before listening to all three events code was added to handlePressedKey()
@@ -363,6 +385,7 @@ document.addEventListener("click", (event) => {
 				if (DEBUG) console.debug('[video_controls] found Shadow DOM:', elem.shadowRoot, elem.shadowRoot.elementsFromPoint(event.x, event.y));
 				elem.shadowRoot.addEventListener("playing", assignVideo, { capture: true });
 				elem.shadowRoot.addEventListener("pause", divestVideo, { capture: true });
+				elem.shadowRoot.adoptedStyleSheets = [sheetToast];
 				elFound = findMediaFromPoint(elem.shadowRoot); // finds only those intersecting
 				if (elFound) { return true; }
 				elFound = findMediaInWholeDoc(elem.shadowRoot);
