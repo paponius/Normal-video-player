@@ -18,35 +18,44 @@
 // ==/UserScript==
 
 
-// todo would also need to add the other two to stop propagation on them. copy the code from video_controls.js
-// now using keypress, as it does not matter here and it needs to be stopped for twitter 's'
-// window.addEventListener("keydown", keyOverride, { capture: true });
-window.addEventListener("keypress", keyOverride, { capture: true });
-// document.addEventListener("keyup", keyOverride, { capture: true });
+var sitesMapTable = {
+	// on Twitter event `keypress` is used, property `which` is required
+	'x.com': {
+		d: {key: 'j', which: 74}, /* next post */
+		s: {key: 'k', which: 75}  /* prev post */
+	}
+};
+
+var domainKeys = Object.keys(sitesMapTable).filter(key => window.location.hostname.includes(key));
+var mapTable;
+// todo: Now this will overwrite any previous with latest matched. change this to per-key. only double defined keys will be overwritten
+domainKeys?.forEach(domainKey => {
+	mapTable = sitesMapTable[domainKey];
+});
+
+if (mapTable) {
+	// todo would also need to add the other two to stop propagation on them. copy the code from video_controls.js
+	// now using keypress, as it does not matter here and it needs to be stopped for twitter 's'
+	// window.addEventListener("keydown", keyOverride, { capture: true });
+	window.addEventListener("keypress", keyOverride, { capture: true });
+	// document.addEventListener("keyup", keyOverride, { capture: true });
+}
 
 function keyOverride(event) {
 	const target = event.target;
 	if (target.localName === "input" || target.localName === "textarea" || target.isContentEditable) { return; }
 	if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) { return; }
-	console.debug(`[remap_shortcut_keys] override | ${event.key} key press detected`);
+	if (event.remapped === true) { return; }
+	console.debug(`[remap_shortcut_keys] event: key press detected: ${event.key}`);
 	// todo: would take remapping values from storage, calculate keycode, 
-	var evt;
-	switch (event.key) {
-	  case 'd': /* next post */
-		// on Twitter event `keypress` is used, property `which` is required
-		evt = new KeyboardEvent('keypress', {'key':'j', which: 74});
+	var substituent = event.key;
+	var substituted = mapTable[substituent];
+	if (substituted) {
+		let evt = new KeyboardEvent('keypress', substituted);
 		evt.remapped = true;
 		document.dispatchEvent(evt);
 		event.stopImmediatePropagation();
-		console.debug('[remap_shortcut_keys] override | keypress "j" dispatched');
-		break;
-	  case 's': /* prev post */
-		evt = new KeyboardEvent('keypress', {'key':'k', which: 75});
-		evt.remapped = true;
-		document.dispatchEvent(evt);
-		event.stopImmediatePropagation();
-		console.debug('[remap_shortcut_keys] override | keypress "k" dispatched');
-		break;
+		console.debug(`[remap_shortcut_keys] override | keypress "${substituted.key}" dispatched`);
 	}
-}
 
+}
