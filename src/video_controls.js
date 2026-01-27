@@ -268,6 +268,8 @@ function handlePressedKey(event) {
 	  case FF_FRAME:
 		if (FASTER !== FF_FRAME && event.key === FF_FRAME && ! elVideo.paused) { elVideo.pause(); }
 		if (elVideo.paused) {
+			elVideo.currentTime = Math.min(elVideo.duration, elVideo.currentTime + frameTime);
+		   if (DEBUG) {
 			debugger;
 			const elCanvas = document.createElement('CANVAS');
 			const ctx = elCanvas.getContext("2d");
@@ -277,10 +279,7 @@ function handlePressedKey(event) {
 				console.log("Video found the playback position it was looking for.");
 				ctx.drawImage(video, 0, 0, width, height);
 			});
-			// todo if end is reached // todo check if elVideo still present
-			// Math.min(elVideo.duration, elVideo.currentTime + frameTime);
-			let timeBefore = elVideo.currentTime += 1 / 60;
-
+		   }
 		} else {
 			speed = Math.round((speed + 0.1) * 10) / 10;
 			elVideo.playbackRate = speed;
@@ -354,6 +353,59 @@ function handlePressedKey(event) {
 	}
 }
 
+
+// var intersectionObserver = new IntersectionObserver((entries, observer) => { // remove `observer`, not needed
+var intersectionObserver = new IntersectionObserver(entries => {
+
+	// console.log('[video_controls] intersectionObserver',entries, observer);
+	console.log('[video_controls] intersectionObserver',entries);
+
+	entries.forEach((entry) => {
+		console.log('[video_controls] intersectionObserver | target', entry.target);
+		console.log('[video_controls] intersectionObserver | intersectionRatio', entry.intersectionRatio);
+		console.log('[video_controls] intersectionObserver | isIntersecting', entry.isIntersecting);
+	});
+}, {
+	root: null, // (null = viewport) alt if needed: elRoot, assign it a scroll container per-site from some static table
+	rootMargin: "0px",
+	threshold: [0.5, 0.75, 1]
+});
+
+
+/*
+   Now only loop on load and again with delay.
+ */
+function loopDOM(docRoot) {
+	const nodeIterator = document.createNodeIterator(docRoot, NodeFilter.SHOW_ELEMENT, node => {
+		// (node.nodeName.toUpperCase() === "VIDEO" || node.nodeName.toUpperCase() === "IMG")
+		if (node instanceof HTMLMediaElement) { return NodeFilter.FILTER_ACCEPT; }
+		if (node.shadowRoot) { return NodeFilter.FILTER_ACCEPT; }
+		return NodeFilter.FILTER_REJECT;
+	});
+	var currentNode;
+	while ((currentNode = nodeIterator.nextNode())) {
+		if (currentNode.shadowRoot) {
+			if (!currentNode.shadowRoot._eventsPlayingPauseAndStyleSheetRegistered) {
+				currentNode.shadowRoot.addEventListener("playing", assignVideo, { capture: true });
+				currentNode.shadowRoot.addEventListener("pause", divestVideo, { capture: true });
+				currentNode.shadowRoot.adoptedStyleSheets = [sheetToast];
+				currentNode.shadowRoot._eventsPlayingPauseAndStyleSheetRegistered = true;
+			}
+			loopDOM(currentNode.shadowRoot);
+		} else if (currentNode instanceof HTMLMediaElement) {
+			if (!currentNode._intersectionObserverRegistered) {
+				intersectionObserver.observe(currentNode);
+				currentNode._intersectionObserverRegistered = true;
+			}
+		} else { console.error('[video_controls] loopDOM()'); }
+	}
+}
+loopDOM(document);
+setTimeout(() => { loopDOM(document); }, 7000);
+
+// Used only by click event handler and only on Shadow DOM. Finds first media element.
+// Does not recurse into Shadow DOM as the loopDOM(), but maybe it should, it's possible there is a media which was not found by findMediaFromPoint
+// Maybe this function should be joined with loopDOM, while adding returnFirstVideo parameter.
 function findMediaInWholeDoc(docRoot) {
 	const nodeIterator = document.createNodeIterator(docRoot, NodeFilter.SHOW_ELEMENT, node => 
 		node instanceof HTMLMediaElement ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
@@ -372,9 +424,11 @@ function findMediaInWholeDoc(docRoot) {
    That means, clicking on a video, even if it's covered by an overlay, will get the video.
  */ 
 
+/* will find first media element */
 document.addEventListener("click", (event) => {
 	if (DEBUG) console.debug('[video_controls] event click START | elementsFromPoint:',document.elementsFromPoint(event.x, event.y));
 	// console.log(event.target.elementsFromPoint(event.x, event.y));
+	if (DEBUG) { performance.mark("click"); }
 	function findMediaFromPoint(doc) {
 		var elFound;
 		doc.elementsFromPoint(event.x, event.y).some(elem => {
@@ -383,9 +437,13 @@ document.addEventListener("click", (event) => {
 			if (elem instanceof HTMLMediaElement) { elFound = elem; return true; } // from *some()*
 			if (elem.shadowRoot) {
 				if (DEBUG) console.debug('[video_controls] found Shadow DOM:', elem.shadowRoot, elem.shadowRoot.elementsFromPoint(event.x, event.y));
-				elem.shadowRoot.addEventListener("playing", assignVideo, { capture: true });
-				elem.shadowRoot.addEventListener("pause", divestVideo, { capture: true });
-				elem.shadowRoot.adoptedStyleSheets = [sheetToast];
+				// calling these three multiple times will not duplicate them, but to be proper
+				if (!elem.shadowRoot._eventsPlayingPauseAndStyleSheetRegistered) {
+					elem.shadowRoot.addEventListener("playing", assignVideo, { capture: true });
+					elem.shadowRoot.addEventListener("pause", divestVideo, { capture: true });
+					elem.shadowRoot.adoptedStyleSheets = [sheetToast];
+					elem.shadowRoot._eventsPlayingPauseAndStyleSheetRegistered = true;
+				}
 				elFound = findMediaFromPoint(elem.shadowRoot); // finds only those intersecting
 				if (elFound) { return true; }
 				elFound = findMediaInWholeDoc(elem.shadowRoot);
@@ -400,6 +458,11 @@ document.addEventListener("click", (event) => {
 			elVideo.pause();
 			divestVideo({target: elVideo});
 		}
+		if (!elClickedVideo._intersectionObserverRegistered) {
+			intersectionObserver.observe(elClickedVideo);
+			elClickedVideo._intersectionObserverRegistered = true;
+		}
 		assignVideo({target: elClickedVideo});
 	}
+	if (DEBUG) { performance.measure("myfunctionduration", "click"); }
 }, { capture: true });

@@ -23,7 +23,7 @@
 // @namespace      https://github.com/paponius/
 // @description    Video controls, seek, full screen, speed. Separated video and text. No overlays.
 // @author         papo
-// @version        1.0.6
+// @version        1.0.7
 // @license        CC BY-NC-SA 4.0
 // ###icon           https://www.google.com/s2/favicons?sz=64&domain=yyy.yy
 
