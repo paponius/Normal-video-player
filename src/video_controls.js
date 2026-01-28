@@ -78,20 +78,11 @@ if (DEBUG == 2) {
 document.addEventListener("playing", assignVideo, { capture: true });
 document.addEventListener("pause", divestVideo, { capture: true });
 
+// elVideo: It could be previously selected media that what is in the event, or the same, or undefined.
 function assignVideo(event) {
-	if (LOG) { console.log('[video_controls] assignVideo', 'XXXX', event.target === elVideo ? " | ignoring: it's an old one" : " | registering: new video"); }
-	// if (LOG) { console.log('[video_speed] assignVideo', event.target, event.target === elVideo ? " | ignoring: it's an old one" : " | registering: new video"); }
-	// e.g. tiktok is changing mute state based on its internal state
-	if (elVideo) {
-		if (LOG) { console.log(`[video_controls] mute: already known video started playing again. It's now ${elVideo.muted ? '' : 'NOT'} muted. Changing to saved state: ${elVideo.dataset.muted ? '' : 'NOT'} muted.`); }
-		// it could also be undefined
-		if (elVideo.dataset.muted === 'true') { elVideo.muted = true;
-		} else if (elVideo.dataset.muted === 'false') { elVideo.muted = false; }
-		if (LOG) { console.log(`[video_controls] mute: todo: should probably check if mute state was actually changed before. Saved mute state: ${elVideo.dataset.muted}`); }
-	}
-	// todo  When it's un-muted here, browser will say no interaction and will pause it. BUT the video will remain muted.
-	//       maybe should check twice and un-mute again
-
+	if (LOG) { console.log('[video_controls] assignVideo() | ', event.target === elVideo ? "ignoring: it's an old one" : "registering: new video",
+		event.target, '| event.timeStamp:', event.timeStamp); }
+	// XXXX 260128 returned to log (event.target), will see if console will break
 	if (event.target === elVideo) { return; } // elVideo could also be undefined/null here
 	if (!elVideo) {
 		// capture: true: to be able to cancel the event soon as possible. To avoid possible site's listeners.
@@ -100,13 +91,14 @@ function assignVideo(event) {
 		document.addEventListener("keyup", handlePressedKey, { capture: true });
 		// document.addEventListener("keypress", stopProp, { capture: true });
 		// document.addEventListener("keyup", stopProp, { capture: true });
+		if (LOG) { console.log('[video_controls]    registered Event Listeners'); }
 	}
 	elVideo = event.target;
 	speed = Math.round(elVideo.playbackRate * 10) / 10;
 }
 
 function divestVideo(event) {
-	if (elVideo?.paused && ! elVideo.ended) { return; } // keep listener if video was paused, so it can be started
+	if (elVideo?.paused && ! elVideo.ended) { return; } // keep elVideo and listeners if video was paused, so it can be started
 
 	if (LOG) { console.log('[video_controls] divestVideo', event.target, event.target === elVideo ?
 		" | removing: it's the one which was last active" : " | ignoring, not removing: it's NOT the one which was last active"); }
@@ -117,6 +109,7 @@ function divestVideo(event) {
 	document.removeEventListener("keyup", handlePressedKey);
 	// document.removeEventListener("keypress", stopProp);
 	// document.removeEventListener("keyup", stopProp);
+	if (LOG) { console.log('[video_controls]    removed Event Listeners'); }
 	elVideo = null;
 }
 
@@ -191,7 +184,7 @@ function showToast(message, timeout = 1500) {
 		const elStyle = document.createElement('STYLE');
 		elStyle.textContent = cssToast;
 		document.head.appendChild(elStyle); 
-		// alt: document.adoptedStyleSheets = [sheetToast];
+		// alt: document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheetToast];
 
 		const elToastPar = document.createElement('DIV');
 		elToast = document.createElement('DIV');
@@ -210,7 +203,7 @@ function showToast(message, timeout = 1500) {
 
 // todo maybe remove. was used before listening to all three events code was added to handlePressedKey()
 function stopProp(event) {
-	if ([SLOWER, FASTER, NORMAL, SHOW, FF5, RW5, FF10, RW10, MUTE].includes(event.key)) {
+	if ([SLOWER, FASTER, NORMAL, SHOW, FF5, RW5, FF10, RW10, MUTE, PLAYPAUSE, FF_FRAME, RW_FRAME, TO_START, NEXT].includes(event.key)) {
 		if (LOG) { console.debug('%c[video_controls] event: stopProp(event)','color: lightpink;', event.key, event.target, elVideo); }
 		event.stopImmediatePropagation();
 	}
@@ -221,7 +214,8 @@ function handlePressedKey(event) {
 	const target = event.target;
 	if (target.localName === "input" || target.localName === "textarea" || target.isContentEditable) { return; }
 	if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) { return; }
-	if (LOG) { console.debug(`%c[video_controls] event: handlePressedKey(event) | key: ${event.key} | type: ${event.type} | event.remapped: ${event.remapped}` ,'color: cyan;', event.target, elVideo, event); }
+	if (LOG) { console.log('%c[video_controls] event: handlePressedKey(event)', 'color: cyan;', `| key: ${event.key} | type: ${event.type} | event.remapped:`, event.remapped); }
+	if (LOG) { console.debug('[video_controls] ... event.target:', event.target, '\nelVideo:', elVideo, '\nevent:', event); }
 	if (event.remapped === true) { return; }
 
 	// Watching all three events, also the deprecated keypress. On e.g. TikTok, keydown is blocked for all keys, keypress does not work for arrows, keyup is not optimal, but it's at least something.
@@ -230,7 +224,7 @@ function handlePressedKey(event) {
 		if (currentlyPressedKeys.includes(event.key)) {
 			// This `if` condition (not its body) can be removed to disallow repeating on a key hold. (Maybe allow just some)
 			if (event.type === 'keypress') {
-				if (LOG) { console.debug('[video_controls] event: handlePressedKey(event) | ignored'); }
+				if (LOG) { console.log('[video_controls] ... | ignored'); }
 				// need to stop other listeners for each type separately
 				stopProp(event);
 				return;
@@ -240,15 +234,15 @@ function handlePressedKey(event) {
 		const idx = currentlyPressedKeys.indexOf(event.key);
 		if (idx !== -1) {
 			currentlyPressedKeys.splice(idx, 1);
-			if (LOG) { console.debug('[video_controls] event: handlePressedKey(event) | ignored'); }
+			if (LOG) { console.log('[video_controls] ... | ignored'); }
 			stopProp(event);
 			return;
 		}
 	}
 	// This line should be after saving of key event. Key could be pressed before elVideo is found and needs to be remembered anyway.
 	if (!elVideo) { return; }
-	if (LOG) { console.debug('[video_controls] event: handlePressedKey(event) | will act if key registered'); }
-
+	if (LOG) { console.log('[video_controls] ... | will act if key registered'); }
+	var isKeyRegistered = true;
 	switch (event.key) {
 	  case SLOWER:
 	  case RW_FRAME:
@@ -328,15 +322,18 @@ function handlePressedKey(event) {
 		event.stopImmediatePropagation();
 		break;
 	  case MUTE:
-		// Player on the page sometimes remember its mute state and force it on video when its play button is pushed. (TikTok)
-		// This does not always correlate with a site. i.e. When mute icon is pressed after keyboard mute key was used, the next time the state from site is ignored. It can be made to follow it on e.g. Twitter, but not on TikTok.
+		// Player on the page sometimes remember its mute state and force it on video when its play button is pushed. (facebook)
+		// This does not always correlate with a site. i.e. When mute icon is pressed after keyboard mute key was used, the next time the state from site is ignored. It can be made to follow it on e.g. Twitter, but not on facebook.
 		if (elVideo.dataset.muted === undefined) { elVideo.dataset.muted = elVideo.muted;
-			if (LOG) { console.log('[video_controls] mute: state was not saved yet. Storing detected state: ', elVideo.dataset.muted, 
-				' | switching mute state'); }
+			if (LOG) { console.log('[video_controls] mute: state was not saved yet. Storing detected state, muted:', elVideo.dataset.muted, 
+				'| switching mute state'); }
 		}
-		if (elVideo.dataset.muted === 'true') { // it's a String, not Boolean
+		// if (elVideo.dataset.muted === 'true') { // it's a String, not Boolean
+		if (elVideo.muted) {
 			elVideo.dataset.muted = elVideo.muted = false;
 			showToast('Unmute');
+			// If un-muted while volume was 0, change it to 100%. It does not work without timer. Who knows why. Maybe only on Twitter.
+			setTimeout(() => { if (elVideo.volume === 0) { elVideo.volume = 1; } }, 10);
 		} else {
 			elVideo.dataset.muted = elVideo.muted =true;
 			showToast('Mute');
@@ -350,20 +347,95 @@ function handlePressedKey(event) {
 		} else { elVideo.pause(); }
 		event.stopImmediatePropagation();
 		break;
+	  default: isKeyRegistered = false; break;
 	}
+
+	// unmute with any action, if video was in muted state because of browser protection
+	if (isKeyRegistered) {
+		if (LOG) { console.log('[video_controls] event: handlePressedKey(event) | Check after any keypress if media is new (state not saved and media muted) | elVideo.dataset.muted:', elVideo.dataset.muted, 'elVideo.muted:', elVideo.muted); }
+		if (elVideo.dataset.muted === undefined && elVideo.muted) {
+			if (LOG) { console.log('[video_controls] 	... | new video. un-muting'); }
+			elVideo.dataset.muted = elVideo.muted = false;
+		}
+	}
+
+}
+
+// 0.01 - 1.00, muted property is true when media gets muted, or when volume is set to value 0.00.
+// event is fired also when media gets muted, while volume value stays the same, which does not need to be zero.
+// this event can run multiple times, e.g. when volume slider is moved to zero, sometimes three times for zero,
+// with one because of mute change, but the third is extra
+function volumeChanged(event) {
+	var elem = event.target;
+	if (LOG) { console.debug('[video_controls] event: volumeChanged() | volume now:', elem.volume, '| muted:', elem.muted); }
+	if (LOG) { console.debug('[video_controls]    elem.dataset.muted:', elem.dataset.muted, '| timeStamp:', event.timeStamp); }
+	if (LOG) { console.debug('[video_controls]    elem.currentTime:', elem.currentTime); }
+
+	// Where the player on site is dumb and keeps its fixed mute state, which is not updated on change by other means.
+	// on mismatch determine if it was user intend.
+	if ((elem.dataset.muted === 'true' && !elem.muted) || (elem.dataset.muted === 'false' && elem.muted)) {
+		// cases where site is resetting undesired state, e.g. elem.currentTime: 0.0655
+		if (elem.currentTime < 0.1) {
+			elem.muted = elem.dataset.muted;
+			if (LOG) { console.debug('[video_controls]    mute state restored to mute:', elem.dataset.muted, 'is:', elem.muted); }
+		}
+	}
+	// This event is also sometimes called on start of a new video (Twitter). The function of unmuting on any keypress will not work.
+	//    volume now: 1 | muted: true | elem.dataset.muted: undefined  | timeStamp: 11960 | elem.currentTime: 0
+	if (elem.muted && elem.dataset.muted === undefined && elem.currentTime === 0) { return; }
+	// save state when changed by native UI
+	elem.dataset.muted = elem.muted;
+}
+function rateChanged(event) {
+	var elem = event.target;
+	if (LOG) { console.debug('[video_controls] event: rateChanged() | playback rate now:', elem.playbackRate); }
+	if (elem !== elVideo) {
+		if (LOG) { console.debug('[video_controls]    this is not elVideo'); }
+		return;
+	}
+	speed = elem.playbackRate;
+}
+function injectHelpersToMedia(elMedia) {
+	if (elMedia._intersectionObserverRegistered) { return; }
+	intersectionObserver.observe(elMedia);
+	elMedia.addEventListener("volumechange", volumeChanged);
+	elMedia.addEventListener("ratechange", rateChanged);
+	elMedia._intersectionObserverRegistered = true;
+}
+
+function injectHelpersToDocument(doc) {
+	// calling these three multiple times will not duplicate them, but to be proper, check
+	if (doc._eventsPlayingPauseAndStyleSheetRegistered) { return; }
+	doc.addEventListener("playing", assignVideo, { capture: true });
+	doc.addEventListener("pause", divestVideo, { capture: true });
+	doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, sheetToast];
+	doc._eventsPlayingPauseAndStyleSheetRegistered = true;
 }
 
 
+// can't just use property within the element, need some variable to keep track of all partially or fully visible.
+// as observer will not have those that did not change, e.g. are still 100% when another change called it
+// - When there are two 100%, the bigger wins.
+// - If they are equal, the last wins.
+var elPrimaryMediaVisible, mediaVisible = new Set();
 // var intersectionObserver = new IntersectionObserver((entries, observer) => { // remove `observer`, not needed
 var intersectionObserver = new IntersectionObserver(entries => {
 
 	// console.log('[video_controls] intersectionObserver',entries, observer);
-	console.log('[video_controls] intersectionObserver',entries);
+	console.log('[video_controls] intersectionObserver', entries);
 
 	entries.forEach((entry) => {
-		console.log('[video_controls] intersectionObserver | target', entry.target);
+		const elem = entry.target;
+		console.log('[video_controls] intersectionObserver | target', elem);
 		console.log('[video_controls] intersectionObserver | intersectionRatio', entry.intersectionRatio);
 		console.log('[video_controls] intersectionObserver | isIntersecting', entry.isIntersecting);
+
+		if (entry.isIntersecting) {
+			elem.dataset.intersectionRatio = entry.intersectionRatio;
+			mediaVisible.add(elem);
+		} else {
+			mediaVisible.delete(elem);
+		}
 	});
 }, {
 	root: null, // (null = viewport) alt if needed: elRoot, assign it a scroll container per-site from some static table
@@ -371,6 +443,7 @@ var intersectionObserver = new IntersectionObserver(entries => {
 	threshold: [0.5, 0.75, 1]
 });
 
+// todo: audio without controls attr. will not be observed. Create a function to check and Register its parent instead. (or sibling)
 
 /*
    Now only loop on load and again with delay.
@@ -385,18 +458,10 @@ function loopDOM(docRoot) {
 	var currentNode;
 	while ((currentNode = nodeIterator.nextNode())) {
 		if (currentNode.shadowRoot) {
-			if (!currentNode.shadowRoot._eventsPlayingPauseAndStyleSheetRegistered) {
-				currentNode.shadowRoot.addEventListener("playing", assignVideo, { capture: true });
-				currentNode.shadowRoot.addEventListener("pause", divestVideo, { capture: true });
-				currentNode.shadowRoot.adoptedStyleSheets = [sheetToast];
-				currentNode.shadowRoot._eventsPlayingPauseAndStyleSheetRegistered = true;
-			}
+			injectHelpersToDocument(currentNode.shadowRoot);
 			loopDOM(currentNode.shadowRoot);
 		} else if (currentNode instanceof HTMLMediaElement) {
-			if (!currentNode._intersectionObserverRegistered) {
-				intersectionObserver.observe(currentNode);
-				currentNode._intersectionObserverRegistered = true;
-			}
+			injectHelpersToMedia(currentNode);
 		} else { console.error('[video_controls] loopDOM()'); }
 	}
 }
@@ -437,13 +502,7 @@ document.addEventListener("click", (event) => {
 			if (elem instanceof HTMLMediaElement) { elFound = elem; return true; } // from *some()*
 			if (elem.shadowRoot) {
 				if (DEBUG) console.debug('[video_controls] found Shadow DOM:', elem.shadowRoot, elem.shadowRoot.elementsFromPoint(event.x, event.y));
-				// calling these three multiple times will not duplicate them, but to be proper
-				if (!elem.shadowRoot._eventsPlayingPauseAndStyleSheetRegistered) {
-					elem.shadowRoot.addEventListener("playing", assignVideo, { capture: true });
-					elem.shadowRoot.addEventListener("pause", divestVideo, { capture: true });
-					elem.shadowRoot.adoptedStyleSheets = [sheetToast];
-					elem.shadowRoot._eventsPlayingPauseAndStyleSheetRegistered = true;
-				}
+				injectHelpersToDocument(elem.shadowRoot);
 				elFound = findMediaFromPoint(elem.shadowRoot); // finds only those intersecting
 				if (elFound) { return true; }
 				elFound = findMediaInWholeDoc(elem.shadowRoot);
@@ -458,11 +517,12 @@ document.addEventListener("click", (event) => {
 			elVideo.pause();
 			divestVideo({target: elVideo});
 		}
-		if (!elClickedVideo._intersectionObserverRegistered) {
-			intersectionObserver.observe(elClickedVideo);
-			elClickedVideo._intersectionObserverRegistered = true;
-		}
+		injectHelpersToMedia(elClickedVideo);
 		assignVideo({target: elClickedVideo});
 	}
-	if (DEBUG) { performance.measure("myfunctionduration", "click"); }
+	if (DEBUG) {
+		performance.measure("myfunctionduration", "click");
+		const measure = performance.getEntriesByName("myfunctionduration")[0];
+		console.log(`Execution time: ${measure.duration.toFixed(3)} sub-ms`);
+	}
 }, { capture: true });
