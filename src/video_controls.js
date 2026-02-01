@@ -45,6 +45,7 @@ const FF_FRAME  = '.'; // Forward 1 frame
 const RW_FRAME  = ','; // Reverse 1 frame
 const TO_START  = 'h'; // To start ("h"ome)
 const NEXT      = ';'; // Next video (go to last frame and let the site switch)
+const FULLSCREEN= 'f';
 // FF_FRAME and FASTER (also RW_FRAME and SLOWER) can use the same key, as one works while paused, the other while playing
 // can't use: "/" in Firefox is search shortcut used by browser
 
@@ -203,7 +204,7 @@ function showToast(message, timeout = 1500) {
 
 // todo maybe remove. was used before listening to all three events code was added to handlePressedKey()
 function stopProp(event) {
-	if ([SLOWER, FASTER, NORMAL, SHOW, FF5, RW5, FF10, RW10, MUTE, PLAYPAUSE, FF_FRAME, RW_FRAME, TO_START, NEXT].includes(event.key)) {
+	if ([SLOWER, FASTER, NORMAL, SHOW, FF5, RW5, FF10, RW10, MUTE, PLAYPAUSE, FF_FRAME, RW_FRAME, TO_START, NEXT, FULLSCREEN].includes(event.key)) {
 		if (LOG) { console.debug('%c[video_controls] event: stopProp(event)','color: lightpink;', event.key, event.target, elVideo); }
 		event.stopImmediatePropagation();
 	}
@@ -346,6 +347,20 @@ function handlePressedKey(event) {
 		if (pausedState) { elVideo.play();
 		} else { elVideo.pause(); }
 		event.stopImmediatePropagation();
+		break;
+	  case FULLSCREEN: {
+	  	let doc = elVideo.getRootNode();
+		if (LOG) { console.log('[video_controls] full-screen: doc/document.fullscreenElement:', doc.fullscreenElement, document.fullscreenElement); }
+	  	// or is this always called on document?
+		if (!doc.fullscreenElement) { elVideo.requestFullscreen();
+		} else {
+			// todo: or is this always called on document?
+			doc.exitFullscreen?.(); // not in safari
+		}
+		break; }
+	  case '~':
+		console.log('[video_controls] elVideo.dataset.muted:', elVideo.dataset.muted, '| elVideo.muted:', elVideo.muted, 'elVideo.volume:', elVideo.volume, elVideo);
+		isKeyRegistered = false;
 		break;
 	  default: isKeyRegistered = false; break;
 	}

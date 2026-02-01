@@ -1,9 +1,10 @@
 # Normal video player
 
-### For all sites with HTML5 video
-Full video control. Speed from 0 to 8x, skip forward/backwards 1/5/10 secs steps, mute button, pause/play, full-screen, next, all without a need to touch a mouse to click on the video.
-(not all mentioned is implemented yet)
-Plan to make a control panel with more options and some mobile support.
+### Advanced control and features to HTML5 video on any page
+(This is a work in progress. The version here should be functional, but not everything mentioned here is implemented)  
+Full video control. Speed from 0 to 8x, skip forward/backwards 1/5/10 secs steps, frame-by-frame both ways, mute button, pause/play, full-screen, next, all without a need to touch a mouse to click on the video.
+Plan to make a control panel with more options and some mobile support.  
+Plan to create control bar which would substitute the one on site. It will not be overlaying the video and will have more functions.
 
 Some sites tend to limit what a user can do with video player. It's important (for them) a user is barred from clicking away, skipping AD, sometimes even reverse/forward, switch full-screen, change speed is blocked. While the video window is covered with a shade, many icons, text in an all-together mash. The video starts playing right away, but muted, that means someone who really wants to see the video must pause, un-mute, reverse.
 
@@ -21,7 +22,7 @@ This is a fix for that.
 
 ## Sites
 Keyboard shortcuts works on possibly all sites with HTML5 video.
-stopping, un-muting, reversing is possible for all sites, planned, not yet implemented.
+stopping, un-muting, reversing is possible for all sites.
 Save video or screenshot, for some, planned.
 Bookmarks, play from-to marks, sharing to someone with this script, planned for later.
 
